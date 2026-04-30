@@ -11,7 +11,7 @@ from unicodedata import normalize
 from collections import defaultdict
 
 # ============================================================================
-# CONEXI”N DIRECTA A SUPABASE (YA NO DEPENDE DE database2.py)
+# CONEXI√ìN DIRECTA A SUPABASE (YA NO DEPENDE DE database2.py)
 # ============================================================================
 DB_URI_NUBE = "postgresql://postgres.tmeyajjnufkzzlgsuxxh:dNLKduxW3lKzQt7A@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
@@ -61,7 +61,7 @@ class PrecioHistorico(Base):
     matched_automatically = Column(Boolean, default=False)
 
 # ============================================================================
-# CONFIGURACI”N DE TEMA Y ESTADÕSTICA
+# CONFIGURACI√ìN DE TEMA Y ESTAD√çSTICA
 # ============================================================================
 st.set_page_config(page_title="Market Intelligence - Purolomo", page_icon="??", layout="wide")
 
@@ -124,12 +124,7 @@ st.markdown(tema_css, unsafe_allow_html=True)
 
 # Logo centrado
 col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
-with col_logo2:
-    try:
-        st.image("LOGO_PUROLOMO.PNG", use_container_width=True)
-    except:
-        st.warning("Logo no encontrado")
-
+st.markdown("<h3 style='text-align: center;'>Purolomo Intelligence</h3>", unsafe_allow_html=True)
 st.title("?? Market Intelligence - Purolomo & Marcas Aliadas")
 st.caption("Comparativa de precios con reglas personalizadas")
 
@@ -177,7 +172,7 @@ def normalizar_categoria(nombre):
     ]
     for m in marcas:
         texto = re.sub(rf'\b{re.escape(m)}\b', '', texto)
-    texto = re.sub(r'\b(de|la|el|los|las|para|con|sin|y|o|a|ante|bajo|cabe|contra|desde|durante|en|entre|hacia|hasta|mediante|por|seg˙n|so|sobre|tras|blanco|integral|premium|superior|extra|light|fresco|natural|original|tipo|cl·sico|deluxe|gourmet|familiar|econÛmico|canilla|tipo)\b', '', texto)
+    texto = re.sub(r'\b(de|la|el|los|las|para|con|sin|y|o|a|ante|bajo|cabe|contra|desde|durante|en|entre|hacia|hasta|mediante|por|seg√∫n|so|sobre|tras|blanco|integral|premium|superior|extra|light|fresco|natural|original|tipo|cl√°sico|deluxe|gourmet|familiar|econ√≥mico|canilla|tipo)\b', '', texto)
     texto = re.sub(r'[^\w\s]', ' ', texto)
     palabras = [p for p in texto.split() if len(p) > 2 and not p.isdigit()]
     return palabras[0] if palabras else "sin_categoria"
@@ -210,7 +205,7 @@ def formatear_nombre_producto(nombre):
     return " ".join(palabras).capitalize()
 
 # ============================================================================
-# CONEXI”N A BD
+# CONEXI√ìN A BD
 # ============================================================================
 session = SessionLocal()
 marcas_propias = ['La Lucha', 'Punta de Monte', 'Alibal', 'Purolomo', 'San Blas', 'Purovo', 'Milpa']
@@ -305,7 +300,7 @@ if not precios_propio:
     st.stop()
 
 # ============================================================================
-# COMPETIDORES: REGLAS O CATEGORÕA
+# COMPETIDORES: REGLAS O CATEGOR√çA
 # ============================================================================
 todos_precios = session.query(PrecioHistorico).filter(
     PrecioHistorico.supermercado_id.in_(selected_super_ids),
@@ -330,7 +325,7 @@ else:
             continue
         if normalizar_categoria(p.nombre_original) == categoria_propia:
             competidores.append(p)
-    st.info(f"?? Sin reglas, usando categorÌa: '{categoria_propia}'")
+    st.info(f"?? Sin reglas, usando categor√≠a: '{categoria_propia}'")
 
 # ============================================================================
 # TABLA COMPARATIVA
@@ -473,12 +468,12 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
 
-st.caption(f"?? An·lisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. EstadÌstica: {titulo_est}.")
+st.caption(f"?? An√°lisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estad√≠stica: {titulo_est}.")
 
 # ============================================================================
-# GR¡FICO EVOLUTIVO
+# GR√ÅFICO EVOLUTIVO
 # ============================================================================
-st.subheader(f"?? EvoluciÛn de precios - {titulo_est} de la competencia vs producto propio")
+st.subheader(f"?? Evoluci√≥n de precios - {titulo_est} de la competencia vs producto propio")
 
 precios_comp_por_fecha = defaultdict(list)
 for p in competidores:
@@ -518,7 +513,7 @@ if not df_evol.empty:
     fig_evol = px.line(df_evol, x="Fecha", y="Precio", color="Tipo", markers=True,
                        labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
                        color_discrete_map=colores_map,
-                       title=f"EvoluciÛn - {titulo_est} diaria")
+                       title=f"Evoluci√≥n - {titulo_est} diaria")
     fig_evol.update_traces(textposition="top center", texttemplate='%{y:.2f}', marker=dict(size=8))
     fig_evol.update_layout(
         plot_bgcolor="white",
@@ -529,12 +524,12 @@ if not df_evol.empty:
     fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45, dtick="D1")
     st.plotly_chart(fig_evol, use_container_width=True)
 else:
-    st.info("No hay datos suficientes para el gr·fico evolutivo.")
+    st.info("No hay datos suficientes para el gr√°fico evolutivo.")
 
 # ============================================================================
-# BOXPLOT POR DÕA
+# BOXPLOT POR D√çA
 # ============================================================================
-st.subheader("?? DistribuciÛn de precios de la competencia por dÌa (Boxplot)")
+st.subheader("?? Distribuci√≥n de precios de la competencia por d√≠a (Boxplot)")
 if competidores:
     box_data = []
     for p in competidores:
@@ -546,7 +541,7 @@ if competidores:
     
     fig_box = px.box(df_box, x="Fecha", y="Precio", points="all",
                      labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
-                     title="DistribuciÛn diaria de precios de competidores",
+                     title="Distribuci√≥n diaria de precios de competidores",
                      color_discrete_sequence=["#00A859"])
     fig_box.update_traces(
         marker=dict(size=6, color="#00A859", opacity=0.7),
@@ -567,9 +562,9 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGN”STICO
+# EDITOR DE REGLAS Y DIAGN√ìSTICO
 # ============================================================================
-with st.expander("?? Editar reglas de inclusiÛn/exclusiÛn para este producto"):
+with st.expander("?? Editar reglas de inclusi√≥n/exclusi√≥n para este producto"):
     st.markdown("""
     **Instrucciones:**  
     - **Incluir** (separado por comas): palabras que **deben** aparecer en el nombre del competidor.  
@@ -586,10 +581,10 @@ with st.expander("?? Editar reglas de inclusiÛn/exclusiÛn para este producto"):
         session.execute(text("DELETE FROM reglas_match WHERE producto_propio_id = :pid"), {"pid": producto_id})
         session.execute(text("INSERT INTO reglas_match (producto_propio_id, palabras_incluir, palabras_excluir) VALUES (:pid, :incluir, :excluir)"), {"pid": producto_id, "incluir": nueva_incluir, "excluir": nueva_excluir})
         session.commit()
-        st.success("Reglas guardadas. Recargando p·gina...")
+        st.success("Reglas guardadas. Recargando p√°gina...")
         st.rerun()
 
-with st.expander("?? DiagnÛstico (reglas y competidores rechazados)"):
+with st.expander("?? Diagn√≥stico (reglas y competidores rechazados)"):
     if reglas and (reglas[0] or reglas[1]):
         st.write(f"**Reglas activas:** Incluir: {', '.join(palabras_incluir)} | Excluir: {', '.join(palabras_excluir)}")
         st.write("**Competidores ACEPTADOS (mostrados en tabla):**")
@@ -600,7 +595,7 @@ with st.expander("?? DiagnÛstico (reglas y competidores rechazados)"):
         for p in rechazados[:20]:
             st.write(f"? {p.nombre_original}")
     else:
-        st.write("No hay reglas definidas, se usa categorÌa autom·tica.")
+        st.write("No hay reglas definidas, se usa categor√≠a autom√°tica.")
 
 session.close()
-st.caption("?? Los gr·ficos evolutivos y KPIs se basan en la estadÌstica seleccionada (Mediana/Promedio). La tabla tiene precios centrados, nombres en formato tÌtulo y resalta el producto propio. El boxplot muestra puntos sin desplazamiento lateral (outliers alineados verticalmente) y fondo blanco en modo oscuro.")
+st.caption("?? Los gr√°ficos evolutivos y KPIs se basan en la estad√≠stica seleccionada (Mediana/Promedio). La tabla tiene precios centrados, nombres en formato t√≠tulo y resalta el producto propio. El boxplot muestra puntos sin desplazamiento lateral (outliers alineados verticalmente) y fondo blanco en modo oscuro.")
