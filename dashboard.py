@@ -11,7 +11,7 @@ from unicodedata import normalize
 from collections import defaultdict
 
 # ============================================================================
-# CONEXION DIRECTA A SUPABASE
+# CONEXIÓN DIRECTA A SUPABASE
 # ============================================================================
 DB_URI_NUBE = "postgresql://postgres.tmeyajjnufkzzlgsuxxh:dNLKduxW3lKzQt7A@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
@@ -61,7 +61,7 @@ class PrecioHistorico(Base):
     matched_automatically = Column(Boolean, default=False)
 
 # ============================================================================
-# CONFIGURACION DE TEMA Y ESTADISTICA
+# CONFIGURACIÓN DE TEMA Y ESTADÍSTICA
 # ============================================================================
 st.set_page_config(page_title="Market Intelligence - Purolomo", page_icon="", layout="wide")
 
@@ -122,7 +122,7 @@ else:
 
 st.markdown(tema_css, unsafe_allow_html=True)
 
-# Titulo sin logo (solo texto)
+# Titulo sin logo
 st.markdown("<h3 style='text-align: center;'>Purolomo Intelligence</h3>", unsafe_allow_html=True)
 
 st.title("Market Intelligence - Purolomo & Marcas Aliadas")
@@ -143,7 +143,7 @@ with col_t3:
     moneda = "USD" if usar_usd else "Bs"
 
 # ============================================================================
-# FUNCIONES AUXILIARES (copiadas de tu original)
+# FUNCIONES AUXILIARES
 # ============================================================================
 def extraer_peso(nombre):
     if not nombre:
@@ -205,7 +205,7 @@ def formatear_nombre_producto(nombre):
     return " ".join(palabras).capitalize()
 
 # ============================================================================
-# CONEXION A BD Y FILTROS
+# CONEXIÓN A BD Y FILTROS
 # ============================================================================
 session = SessionLocal()
 marcas_propias = ['La Lucha', 'Punta de Monte', 'Alibal', 'Purolomo', 'San Blas', 'Purovo', 'Milpa']
@@ -294,7 +294,8 @@ precios_propio = session.query(PrecioHistorico).filter(
 ).all()
 if not precios_propio:
     st.warning(f"El producto '{producto_label}' no tiene precios en los supermercados seleccionados.")
-    st.stop()
+    # No detenemos la ejecución, para poder mostrar la competencia igual
+    # st.stop()   # COMENTADO para que la competencia sí se muestre
 
 # ============================================================================
 # COMPETIDORES
@@ -467,7 +468,7 @@ with col3:
 st.caption(f"Analisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadistica: {titulo_est}.")
 
 # ============================================================================
-# GRAFICO EVOLUTIVO
+# GRÁFICO EVOLUTIVO (CORREGIDO: no dibuja línea roja si no hay datos propios)
 # ============================================================================
 st.subheader(f"Evolucion de precios - {titulo_est} de la competencia vs producto propio")
 
@@ -493,13 +494,18 @@ for p in precios_propio:
     fecha = p.fecha_extraccion.date()
     precio = p.precio_usd if usar_usd else p.precio_bs
     precios_prop_por_fecha[fecha].append(precio)
-for fecha, valores in precios_prop_por_fecha.items():
-    if valores:
-        if st.session_state.estadistica == "Mediana":
-            stat_val = np.median(valores)
-        else:
-            stat_val = np.mean(valores)
-        datos_evol.append({"Fecha": fecha, "Tipo": producto_actual.marca, "Precio": stat_val})
+
+# ========== CORRECCIÓN AQUÍ ==========
+# Solo agregar la serie del producto propio si hay al menos un precio
+if precios_prop_por_fecha:
+    for fecha, valores in precios_prop_por_fecha.items():
+        if valores:
+            if st.session_state.estadistica == "Mediana":
+                stat_val = np.median(valores)
+            else:
+                stat_val = np.mean(valores)
+            datos_evol.append({"Fecha": fecha, "Tipo": producto_actual.marca, "Precio": stat_val})
+# =====================================
 
 df_evol = pd.DataFrame(datos_evol).sort_values("Fecha")
 df_evol = df_evol.drop_duplicates(subset=["Fecha", "Tipo"])
