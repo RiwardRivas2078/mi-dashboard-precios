@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS PARA AMBOS TEMAS (con mejoras para la tabla)
+# CSS PARA AMBOS TEMAS - CORREGIDO PARA MODO OSCURO (textos legibles)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -93,7 +93,7 @@ if st.session_state.tema == "light":
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label { background-color: white; padding: 6px 14px; border-radius: 30px; border: 1px solid #E5E5E5; }
         .stCheckbox label:hover { border-color: #CC0000; background-color: #FFF5F5; }
-        /* Estilos mejorados para la tabla */
+        /* Estilos tabla */
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -137,9 +137,20 @@ if st.session_state.tema == "light":
 else:
     tema_css = """
     <style>
-        .stApp { background-color: #1E1E1E; }
-        .stApp, .stMarkdown, .stDataFrame, .stSelectbox, .stMultiSelect, .stDateInput, .stCheckbox, .stToggle, .stButton { color: #FFFFFF !important; }
-        h1, h2, h3 { color: #CC0000 !important; }
+        /* Fondo general oscuro */
+        .stApp { background-color: #121212; }
+        /* Todos los textos base en blanco */
+        .stApp, .stMarkdown, .stDataFrame, .stSelectbox, .stMultiSelect, .stDateInput, .stCheckbox, .stToggle, .stButton, label, .st-df, .st-emotion-cache-1v0mbdj, .st-emotion-cache-10trblm, .st-emotion-cache-1r4qj8v, .st-emotion-cache-1v3ca8t, .st-emotion-cache-1wivap2, .st-emotion-cache-183lzff, .st-emotion-cache-1kyxreq, .st-emotion-cache-1aumxhk, .st-emotion-cache-16txtl3, .st-emotion-cache-1inwz65 {
+            color: #FFFFFF !important;
+        }
+        /* Encabezados rojos */
+        h1, h2, h3, h4, h5, h6 { color: #CC0000 !important; }
+        /* Texto dentro de los expanders y otros */
+        .streamlit-expanderHeader, .streamlit-expanderContent {
+            color: #FFFFFF !important;
+            background-color: #1E1E1E !important;
+        }
+        /* KPIs en modo oscuro */
         .metric-red { background-color: #2D2D2D; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); color: #FFFFFF; }
         .metric-green { background-color: #2D2D2D; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); color: #FFFFFF; }
         .metric-neutral { background-color: #2D2D2D; border-left: 6px solid #6C757D; border-radius: 16px; padding: 16px; color: #FFFFFF; }
@@ -148,7 +159,7 @@ else:
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label { background-color: #2D2D2D; padding: 6px 14px; border-radius: 30px; border: 1px solid #555; color: white; }
         .stCheckbox label:hover { border-color: #CC0000; background-color: #3D3D3D; }
-        /* Estilos mejorados para la tabla en modo oscuro */
+        /* Tabla modo oscuro mejorada */
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -186,7 +197,15 @@ else:
             padding-left: 16px;
             color: #FFAAAA;
         }
-        .centered-title { text-align: center; font-size: 0.85rem; color: #AAAAAA; margin-top: 8px; }
+        .centered-title { text-align: center; font-size: 0.85rem; color: #CCCCCC; margin-top: 8px; }
+        /* Asegurar que el selectbox tenga texto blanco */
+        .stSelectbox label, .stSelectbox div, .stSelectbox span {
+            color: white !important;
+        }
+        /* Asegurar que los inputs de fecha tengan texto blanco */
+        .stDateInput label, .stDateInput div {
+            color: white !important;
+        }
     </style>
     """
 
@@ -388,6 +407,7 @@ else:
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
     st.warning("No hay fechas disponibles.")
+    st.stop()
 else:
     fecha_comun = todas_fechas[-1]  # la fecha más reciente con datos
     # Para cada combinación (supermercado, nombre_original), buscar el precio más reciente con fecha <= fecha_comun
@@ -436,7 +456,6 @@ else:
             return ['background-color: #2E7D32; color: white; font-weight: bold;'] * len(row)
         return [''] * len(row)
     
-    # Estilos de celda: centrado, bordes redondeados
     styled = df_valores.style.apply(resaltar_fila, axis=1)
     styled = styled.set_properties(**{'text-align': 'center', 'font-size': '13px'})
     styled = styled.set_table_styles([
@@ -517,7 +536,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha)
+# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha) - CORREGIDO LEYENDA MODO OSCURO
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
 
@@ -573,19 +592,37 @@ else:
                            color_discrete_map=colores_map,
                            title=f"Evolución - {titulo_est} diaria (último precio por competidor)")
         fig_evol.update_traces(textposition="top center", texttemplate='%{y:.2f}', marker=dict(size=8))
-        fig_evol.update_layout(
-            plot_bgcolor="white",
-            paper_bgcolor="white" if st.session_state.tema == "light" else "#2D2D2D",
-            legend_title=None, height=450, hovermode="x unified",
-            font=dict(color="black" if st.session_state.tema == "light" else "white")
-        )
+        # Forzar colores de texto y fondo de la leyenda en modo oscuro
+        if st.session_state.tema == "dark":
+            fig_evol.update_layout(
+                plot_bgcolor="#2D2D2D",
+                paper_bgcolor="#2D2D2D",
+                legend_title=None,
+                height=450,
+                hovermode="x unified",
+                font=dict(color="white", size=12),
+                legend=dict(font=dict(color="white"), bgcolor="#2D2D2D", bordercolor="white", borderwidth=1)
+            )
+            fig_evol.update_xaxes(title_font_color="white", tickfont_color="white", gridcolor="#555555")
+            fig_evol.update_yaxes(title_font_color="white", tickfont_color="white", gridcolor="#555555")
+        else:
+            fig_evol.update_layout(
+                plot_bgcolor="white",
+                paper_bgcolor="white",
+                legend_title=None,
+                height=450,
+                hovermode="x unified",
+                font=dict(color="black", size=12)
+            )
+            fig_evol.update_xaxes(tickfont_color="black")
+            fig_evol.update_yaxes(tickfont_color="black")
         fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
         st.plotly_chart(fig_evol, use_container_width=True)
     else:
         st.info("No hay datos suficientes para el gráfico evolutivo.")
 
 # ============================================================================
-# BOXPLOT (sin cambios)
+# BOXPLOT (sin cambios, pero adaptado para modo oscuro)
 # ============================================================================
 st.subheader("📊 Distribución de precios de la competencia por día (Boxplot)")
 if competidores:
@@ -603,12 +640,23 @@ if competidores:
     fig_box.update_traces(marker=dict(size=6, color="#00A859", opacity=0.7), jitter=0, pointpos=0,
                           hovertemplate='<b>Producto:</b> %{text}<br><b>Precio:</b> %{y:.2f}<extra></extra>',
                           text=df_box['Producto'] + ' (' + df_box['Supermercado'] + ')')
-    fig_box.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white" if st.session_state.tema == "light" else "#2D2D2D",
-        height=450,
-        font=dict(color="black" if st.session_state.tema == "light" else "white")
-    )
+    if st.session_state.tema == "dark":
+        fig_box.update_layout(
+            plot_bgcolor="#2D2D2D",
+            paper_bgcolor="#2D2D2D",
+            height=450,
+            font=dict(color="white"),
+            legend=dict(font=dict(color="white"), bgcolor="#2D2D2D", bordercolor="white", borderwidth=1)
+        )
+        fig_box.update_xaxes(title_font_color="white", tickfont_color="white", gridcolor="#555555")
+        fig_box.update_yaxes(title_font_color="white", tickfont_color="white", gridcolor="#555555")
+    else:
+        fig_box.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            height=450,
+            font=dict(color="black")
+        )
     fig_box.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
     st.plotly_chart(fig_box, use_container_width=True)
 else:
@@ -651,4 +699,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Los gráficos evolutivos y KPIs se basan en la estadística seleccionada. La tabla muestra precios hasta la fecha más reciente común (último punto del gráfico). Los colores y el diseño están optimizados para mejor visualización.")
+st.caption("🚀 Los gráficos evolutivos y KPIs se basan en la estadística seleccionada. La tabla muestra precios hasta la fecha más reciente común (último punto del gráfico). Los colores y el diseño están optimizados para mejor visualización. En modo oscuro todos los textos son legibles.")
