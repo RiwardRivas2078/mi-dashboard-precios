@@ -11,7 +11,7 @@ from unicodedata import normalize
 from collections import defaultdict
 
 # ============================================================================
-# CONEXIÓN DIRECTA A SUPABASE
+# CONEXIÓN DIRECTA A SUPABASE (copia tu URI aquí)
 # ============================================================================
 DB_URI_NUBE = "postgresql://postgres.tmeyajjnufkzzlgsuxxh:dNLKduxW3lKzQt7A@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
@@ -25,7 +25,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ============================================================================
-# MODELOS
+# MODELOS (deben coincidir exactamente con tus tablas en Supabase)
 # ============================================================================
 class Supermercado(Base):
     __tablename__ = 'supermercados'
@@ -63,7 +63,7 @@ class PrecioHistorico(Base):
 # ============================================================================
 # CONFIGURACIÓN DE TEMA Y ESTADÍSTICA
 # ============================================================================
-st.set_page_config(page_title="Market Intelligence - Purolomo", page_icon="", layout="wide")
+st.set_page_config(page_title="Market Intelligence - Purolomo", page_icon="🐔", layout="wide")
 
 if "tema" not in st.session_state:
     st.session_state.tema = "light"
@@ -122,19 +122,17 @@ else:
 
 st.markdown(tema_css, unsafe_allow_html=True)
 
-# Titulo sin logo
 st.markdown("<h3 style='text-align: center;'>Purolomo Intelligence</h3>", unsafe_allow_html=True)
-
 st.title("Market Intelligence - Purolomo & Marcas Aliadas")
-st.caption("Comparativa de precios con reglas personalizadas")
+st.caption("Comparativa de precios - Tabla muestra el precio más reciente y su fecha. El gráfico usa el último precio de cada competidor hasta cada fecha.")
 
 # ============================================================================
-# BARRA SUPERIOR DE HERRAMIENTAS
+# BARRA SUPERIOR
 # ============================================================================
 col_t1, col_t2, col_t3 = st.columns([1, 1, 3])
 with col_t1:
     tema_icono = "☀️" if st.session_state.tema == "light" else "🌙"
-    st.button(f"{tema_icono} Tema", on_click=toggle_tema, help="Cambiar tema claro/oscuro")
+    st.button(f"{tema_icono} Tema", on_click=toggle_tema, help="Cambiar tema")
 with col_t2:
     estadistica_icono = "📊" if st.session_state.estadistica == "Mediana" else "📈"
     st.button(f"{estadistica_icono} {st.session_state.estadistica}", on_click=toggle_estadistica, help="Alternar entre mediana y promedio")
@@ -143,7 +141,7 @@ with col_t3:
     moneda = "USD" if usar_usd else "Bs"
 
 # ============================================================================
-# FUNCIONES AUXILIARES
+# FUNCIONES AUXILIARES (sin cambios)
 # ============================================================================
 def extraer_peso(nombre):
     if not nombre:
@@ -274,18 +272,8 @@ producto_label = st.selectbox("Selecciona un producto propio:", list(opciones.ke
 producto_id = opciones[producto_label]
 producto_actual = session.get(ProductoReferencia, producto_id)
 
-# Preconfigurar reglas para Arroz La Lucha
-if producto_actual.nombre_producto == "Arroz La Lucha" and producto_actual.marca == "La Lucha":
-    existe_regla = session.execute(text("SELECT 1 FROM reglas_match WHERE producto_propio_id = :pid"), {"pid": producto_id}).fetchone()
-    if not existe_regla:
-        incluir_default = ['arroz']
-        excluir_default = ['harina', 'morcilla', 'integral', 'dorado', '2 kg', '800 gr', 'basmati', 'arborio', 'jazmin', 'sushi', 'importado', 'gourmet', 'clasico', 'tradicional', 'la lucha', 'panquecas', 'mezcla', 'tosh', 'avena']
-        session.execute(text("INSERT INTO reglas_match (producto_propio_id, palabras_incluir, palabras_excluir) VALUES (:pid, :incluir, :excluir)"), {"pid": producto_id, "incluir": incluir_default, "excluir": excluir_default})
-        session.commit()
-        st.info("Reglas preconfiguradas para Arroz La Lucha (puedes modificarlas abajo).")
-
 # ============================================================================
-# PRECIOS DEL PRODUCTO PROPIO
+# PRECIOS DEL PRODUCTO PROPIO (sin stop para que muestre competencia igual)
 # ============================================================================
 precios_propio = session.query(PrecioHistorico).filter(
     PrecioHistorico.producto_referencia_id == producto_id,
@@ -293,12 +281,10 @@ precios_propio = session.query(PrecioHistorico).filter(
     PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin)
 ).all()
 if not precios_propio:
-    st.warning(f"El producto '{producto_label}' no tiene precios en los supermercados seleccionados.")
-    # No detenemos la ejecución, para poder mostrar la competencia igual
-    # st.stop()   # COMENTADO para que la competencia sí se muestre
+    st.warning(f"El producto '{producto_label}' no tiene precios en los supermercados seleccionados. Se mostrará solo la competencia.")
 
 # ============================================================================
-# COMPETIDORES
+# COMPETIDORES (usando reglas_match o categoría)
 # ============================================================================
 todos_precios = session.query(PrecioHistorico).filter(
     PrecioHistorico.supermercado_id.in_(selected_super_ids),
@@ -323,12 +309,12 @@ else:
             continue
         if normalizar_categoria(p.nombre_original) == categoria_propia:
             competidores.append(p)
-    st.info(f"Sin reglas, usando categoria: '{categoria_propia}'")
+    st.info(f"Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA
+# TABLA COMPARATIVA (con FECHA del último precio)
 # ============================================================================
-ultimos = {}
+ultimos = {}  # (supermercado_id, nombre_original) -> {'precio': float, 'fecha': datetime, 'nombre_original': str}
 for p in (precios_propio + competidores):
     key = (p.supermercado_id, p.nombre_original)
     precio_val = p.precio_usd if usar_usd else p.precio_bs
@@ -345,16 +331,21 @@ productos_unicos = sorted(set(k[1] for k in ultimos.keys()))
 super_ids_unicos = sorted(set(k[0] for k in ultimos.keys()))
 super_nombres = [session.get(Supermercado, sid).nombre for sid in super_ids_unicos]
 
+# Crear DataFrame con celdas que muestran "precio (dd/mm)"
 df_valores = pd.DataFrame(index=[formatear_nombre_producto(prod) for prod in productos_unicos], columns=super_nombres)
 for prod in productos_unicos:
     prod_formateado = formatear_nombre_producto(prod)
     for sid, sup_nombre in zip(super_ids_unicos, super_nombres):
         key = (sid, prod)
         if key in ultimos:
-            df_valores.loc[prod_formateado, sup_nombre] = ultimos[key]["precio"]
+            precio = ultimos[key]["precio"]
+            fecha = ultimos[key]["fecha"]
+            celda = f"{precio:.2f} ({fecha.strftime('%d/%m')})" if precio else "Sin datos"
+            df_valores.loc[prod_formateado, sup_nombre] = celda
         else:
-            df_valores.loc[prod_formateado, sup_nombre] = None
+            df_valores.loc[prod_formateado, sup_nombre] = "Sin datos"
 
+# Identificar producto propio (para resaltar fila)
 nombre_propio_tabla = None
 for prod in productos_unicos:
     if producto_actual.nombre_producto.lower() in prod.lower() or producto_actual.marca.lower() in prod.lower():
@@ -363,39 +354,33 @@ for prod in productos_unicos:
 if not nombre_propio_tabla and precios_propio:
     nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
 
-def format_precio(val):
-    if pd.isna(val):
-        return "Sin datos"
-    return f"{val:.2f} {moneda}"
-
-styled = df_valores.style.format(format_precio)
-styled = styled.set_table_styles([
-    {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]},
-    {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]}
-])
-styled = styled.set_properties(**{'text-align': 'center'})
-
 def resaltar_fila(row):
     if row.name == nombre_propio_tabla:
         return ['background-color: #D4EDDA; font-weight: bold;'] * len(row)
     return [''] * len(row)
-styled = styled.apply(resaltar_fila, axis=1)
+
+styled = df_valores.style.apply(resaltar_fila, axis=1)
+styled = styled.set_table_styles([
+    {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]},
+    {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]}
+])
+
+st.subheader(f"Comparativa: {producto_actual.marca} - {producto_actual.nombre_producto}")
+st.dataframe(styled, use_container_width=True, height=400)
 
 fecha_max = session.query(func.max(PrecioHistorico.fecha_extraccion)).filter(
     PrecioHistorico.supermercado_id.in_(selected_super_ids),
     PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin)
 ).scalar()
 fecha_max_str = fecha_max.strftime("%d/%m/%Y") if fecha_max else "desconocida"
-
-st.subheader(f"Comparativa: {producto_actual.marca} - {producto_actual.nombre_producto}")
-st.dataframe(styled, use_container_width=True, height=400)
 st.markdown(f"<p class='centered-title'>Datos actualizados al {fecha_max_str}</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS Y COBERTURA
+# KPIS y cobertura (usando la misma tabla "ultimos")
 # ============================================================================
 st.subheader("Indicadores Clave")
 
+# Identificar el nombre_original del producto propio
 nombre_propio_original = None
 for key in ultimos:
     if producto_actual.nombre_producto.lower() in key[1].lower() or producto_actual.marca.lower() in key[1].lower():
@@ -465,73 +450,95 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
 
-st.caption(f"Analisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadistica: {titulo_est}.")
+st.caption(f"Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (CORREGIDO: no dibuja línea roja si no hay datos propios)
+# GRÁFICO EVOLUTIVO CORREGIDO (usa último precio por competidor hasta cada fecha)
 # ============================================================================
-st.subheader(f"Evolucion de precios - {titulo_est} de la competencia vs producto propio")
+st.subheader(f"Evolución de precios - {titulo_est} de la competencia vs producto propio")
 
-precios_comp_por_fecha = defaultdict(list)
-for p in competidores:
-    fecha = p.fecha_extraccion.date()
-    precio = p.precio_usd if usar_usd else p.precio_bs
-    precios_comp_por_fecha[fecha].append(precio)
-
-fechas_ordenadas = sorted(precios_comp_por_fecha.keys())
-datos_evol = []
-for fecha in fechas_ordenadas:
-    valores = precios_comp_por_fecha[fecha]
-    if valores:
-        if st.session_state.estadistica == "Mediana":
-            stat_val = np.median(valores)
-        else:
-            stat_val = np.mean(valores)
-        datos_evol.append({"Fecha": fecha, "Tipo": "Competencia", "Precio": stat_val})
-
-precios_prop_por_fecha = defaultdict(list)
-for p in precios_propio:
-    fecha = p.fecha_extraccion.date()
-    precio = p.precio_usd if usar_usd else p.precio_bs
-    precios_prop_por_fecha[fecha].append(precio)
-
-# ========== CORRECCIÓN AQUÍ ==========
-# Solo agregar la serie del producto propio si hay al menos un precio
-if precios_prop_por_fecha:
-    for fecha, valores in precios_prop_por_fecha.items():
-        if valores:
-            if st.session_state.estadistica == "Mediana":
-                stat_val = np.median(valores)
-            else:
-                stat_val = np.mean(valores)
-            datos_evol.append({"Fecha": fecha, "Tipo": producto_actual.marca, "Precio": stat_val})
-# =====================================
-
-df_evol = pd.DataFrame(datos_evol).sort_values("Fecha")
-df_evol = df_evol.drop_duplicates(subset=["Fecha", "Tipo"])
-
-if not df_evol.empty:
-    colores_map = {producto_actual.marca: "#CC0000", "Competencia": "#00A859"}
-    fig_evol = px.line(df_evol, x="Fecha", y="Precio", color="Tipo", markers=True,
-                       labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
-                       color_discrete_map=colores_map,
-                       title=f"Evolucion - {titulo_est} diaria")
-    fig_evol.update_traces(textposition="top center", texttemplate='%{y:.2f}', marker=dict(size=8))
-    fig_evol.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white" if st.session_state.tema == "light" else "#2D2D2D",
-        legend_title=None, height=450, hovermode="x unified",
-        font=dict(color="black" if st.session_state.tema == "light" else "white")
-    )
-    fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45, dtick="D1")
-    st.plotly_chart(fig_evol, use_container_width=True)
+# Obtener todas las fechas únicas del rango (desde fecha_inicio hasta fecha_fin, con datos)
+fechas_disponibles = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
+if not fechas_disponibles:
+    st.info("No hay datos para el gráfico evolutivo.")
 else:
-    st.info("No hay datos suficientes para el grafico evolutivo.")
+    # Diccionario para guardar el último precio de cada competidor (por nombre_original) hasta cada fecha
+    # Estructura: por fecha -> dict {nombre_original: precio}
+    ultimos_por_fecha = {}
+    
+    # Para cada fecha en orden ascendente
+    for fecha in fechas_disponibles:
+        # Copiar el estado anterior (si existe) o empezar vacío
+        if fecha > fechas_disponibles[0]:
+            ultimos_por_fecha[fecha] = ultimos_por_fecha[fechas_disponibles[fechas_disponibles.index(fecha)-1]].copy()
+        else:
+            ultimos_por_fecha[fecha] = {}
+        
+        # Actualizar con los precios que ocurren exactamente en esta fecha
+        for p in competidores:
+            if p.fecha_extraccion.date() == fecha:
+                key = p.nombre_original
+                precio = p.precio_usd if usar_usd else p.precio_bs
+                ultimos_por_fecha[fecha][key] = precio
+        # También para el producto propio (lo añadiremos después)
+    
+    # Construir datos para el gráfico
+    datos_evol = []
+    for fecha in fechas_disponibles:
+        # Competencia: calcular estadística de los últimos precios de ese día
+        precios_comp = list(ultimos_por_fecha[fecha].values())
+        if precios_comp:
+            if st.session_state.estadistica == "Mediana":
+                stat_comp = np.median(precios_comp)
+            else:
+                stat_comp = np.mean(precios_comp)
+            datos_evol.append({"Fecha": fecha, "Tipo": "Competencia", "Precio": stat_comp})
+        
+        # Producto propio: buscar su precio en la misma lógica (último precio hasta esa fecha)
+        # Simplificado: buscamos el precio más reciente del producto propio hasta esa fecha
+        precios_prop_hasta_fecha = [p.precio_usd if usar_usd else p.precio_bs for p in precios_propio if p.fecha_extraccion.date() <= fecha]
+        if precios_prop_hasta_fecha:
+            ultimo_precio_prop = precios_prop_hasta_fecha[-1]  # ya vienen ordenados? mejor usar max fecha
+            # Pero lo correcto es obtener el precio del registro con fecha máxima <= fecha
+            mejor = None
+            for p in precios_propio:
+                if p.fecha_extraccion.date() <= fecha:
+                    if mejor is None or p.fecha_extraccion > mejor[1]:
+                        mejor = (p.precio_usd if usar_usd else p.precio_bs, p.fecha_extraccion)
+            if mejor:
+                if st.session_state.estadistica == "Mediana":
+                    # Para producto propio no hay múltiples valores por día en esta lógica, pero puede haber varios precios el mismo día?
+                    # Tomamos el último de ese día (si hay varios, el más reciente)
+                    stat_prop = mejor[0]
+                else:
+                    stat_prop = mejor[0]
+                datos_evol.append({"Fecha": fecha, "Tipo": producto_actual.marca, "Precio": stat_prop})
+    
+    df_evol = pd.DataFrame(datos_evol).sort_values("Fecha")
+    df_evol = df_evol.drop_duplicates(subset=["Fecha", "Tipo"])
+    
+    if not df_evol.empty:
+        colores_map = {producto_actual.marca: "#CC0000", "Competencia": "#00A859"}
+        fig_evol = px.line(df_evol, x="Fecha", y="Precio", color="Tipo", markers=True,
+                           labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
+                           color_discrete_map=colores_map,
+                           title=f"Evolución - {titulo_est} diaria (último precio por competidor)")
+        fig_evol.update_traces(textposition="top center", texttemplate='%{y:.2f}', marker=dict(size=8))
+        fig_evol.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white" if st.session_state.tema == "light" else "#2D2D2D",
+            legend_title=None, height=450, hovermode="x unified",
+            font=dict(color="black" if st.session_state.tema == "light" else "white")
+        )
+        fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
+        st.plotly_chart(fig_evol, use_container_width=True)
+    else:
+        st.info("No hay datos suficientes para el gráfico evolutivo.")
 
 # ============================================================================
-# BOXPLOT POR DIA
+# BOXPLOT (sin cambios, solo para competidores aceptados)
 # ============================================================================
-st.subheader("Distribucion de precios de la competencia por dia (Boxplot)")
+st.subheader("Distribución de precios de la competencia por día (Boxplot)")
 if competidores:
     box_data = []
     for p in competidores:
@@ -540,18 +547,13 @@ if competidores:
         sup_nombre = session.get(Supermercado, p.supermercado_id).nombre
         box_data.append({"Fecha": fecha, "Precio": precio, "Supermercado": sup_nombre, "Producto": p.nombre_original})
     df_box = pd.DataFrame(box_data)
-    
     fig_box = px.box(df_box, x="Fecha", y="Precio", points="all",
                      labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
-                     title="Distribucion diaria de precios de competidores",
+                     title="Distribución diaria de precios de competidores",
                      color_discrete_sequence=["#00A859"])
-    fig_box.update_traces(
-        marker=dict(size=6, color="#00A859", opacity=0.7),
-        jitter=0,
-        pointpos=0,
-        hovertemplate='<b>Producto:</b> %{text}<br><b>Precio:</b> %{y:.2f}<extra></extra>',
-        text=df_box['Producto'] + ' (' + df_box['Supermercado'] + ')'
-    )
+    fig_box.update_traces(marker=dict(size=6, color="#00A859", opacity=0.7), jitter=0, pointpos=0,
+                          hovertemplate='<b>Producto:</b> %{text}<br><b>Precio:</b> %{y:.2f}<extra></extra>',
+                          text=df_box['Producto'] + ' (' + df_box['Supermercado'] + ')')
     fig_box.update_layout(
         plot_bgcolor="white",
         paper_bgcolor="white" if st.session_state.tema == "light" else "#2D2D2D",
@@ -564,9 +566,9 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNOSTICO
+# EDITOR DE REGLAS Y DIAGNÓSTICO
 # ============================================================================
-with st.expander("Editar reglas de inclusion/exclusion para este producto"):
+with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
     **Instrucciones:**  
     - **Incluir** (separado por comas): palabras que **deben** aparecer en el nombre del competidor.  
@@ -583,10 +585,10 @@ with st.expander("Editar reglas de inclusion/exclusion para este producto"):
         session.execute(text("DELETE FROM reglas_match WHERE producto_propio_id = :pid"), {"pid": producto_id})
         session.execute(text("INSERT INTO reglas_match (producto_propio_id, palabras_incluir, palabras_excluir) VALUES (:pid, :incluir, :excluir)"), {"pid": producto_id, "incluir": nueva_incluir, "excluir": nueva_excluir})
         session.commit()
-        st.success("Reglas guardadas. Recargando pagina...")
+        st.success("Reglas guardadas. Recargando página...")
         st.rerun()
 
-with st.expander("Diagnostico (reglas y competidores rechazados)"):
+with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
     if reglas and (reglas[0] or reglas[1]):
         st.write(f"**Reglas activas:** Incluir: {', '.join(palabras_incluir)} | Excluir: {', '.join(palabras_excluir)}")
         st.write("**Competidores ACEPTADOS (mostrados en tabla):**")
@@ -597,7 +599,7 @@ with st.expander("Diagnostico (reglas y competidores rechazados)"):
         for p in rechazados[:20]:
             st.write(f"❌ {p.nombre_original}")
     else:
-        st.write("No hay reglas definidas, se usa categoria automatica.")
+        st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("Los graficos evolutivos y KPIs se basan en la estadistica seleccionada (Mediana/Promedio). La tabla tiene precios centrados, nombres en formato titulo y resalta el producto propio. El boxplot muestra puntos sin desplazamiento lateral.")
+st.caption("🗓️ La tabla muestra el precio más reciente y su fecha (dd/mm). El gráfico evolutivo usa el último precio disponible de cada competidor hasta cada fecha, por lo que el último punto del gráfico coincide con el promedio de los precios de la tabla **si todos los precios de la tabla fueran de la misma fecha**. Al mostrar la fecha, puedes ver si hay diferencias.")
