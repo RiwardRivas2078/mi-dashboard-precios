@@ -1,0 +1,23 @@
+name: scraper_diario
+
+on:
+  schedule:
+    # 10:00 UTC es igual a las 06:00 AM en Caracas, Venezuela
+    - cron: '0 10 * * *'
+  workflow_dispatch: # Esto te permite ejecutarlo manualmente cuando quieras
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo content
+        uses: actions/checkout@v3
+
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: install python packages
+        run: |
+Normally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
