@@ -1,5 +1,4 @@
 name: scraper_diario
-
 on:
   schedule:
     # 10:00 UTC es igual a las 06:00 AM en Caracas, Venezuela
