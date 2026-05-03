@@ -2,5 +2,9 @@ streamlit
 pandas
 plotly
 numpy
+selenium
+beautifulsoup4
+requests
+webdriver-manager
 sqlalchemy
 psycopg2-binary
