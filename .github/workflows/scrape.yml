@@ -2,8 +2,8 @@ name: scraper_diario
 
 on:
   schedule:
-    - cron: '0 10 * * *'
-  workflow_dispatch:
+    - cron: '0 10 * * *' # Corre a las 6:00 AM hora Caracas
+  workflow_dispatch: # Esto activa el botón gris que ya logramos ver
 
 jobs:
   build:
