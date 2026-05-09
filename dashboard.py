@@ -79,7 +79,7 @@ def toggle_estadistica():
 
 
 # ============================================================================
-# CSS (versión mejorada con colores visibles)
+# CSS MEJORADO (colores y contraste)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -137,8 +137,6 @@ if st.session_state.tema == "light":
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #6C757D; margin-top: 8px; }
         div[data-baseweb="select"] div { color: #CC0000 !important; }
-        .tooltip { cursor: help; border-bottom: 1px dotted #aaa; }
-        /* Colores para extremos en la tabla */
         .min-price { color: #00A859 !important; font-weight: bold !important; }
         .max-price { color: #CC0000 !important; font-weight: bold !important; }
     </style>
@@ -218,7 +216,6 @@ else:
             color: #FFAAAA;
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #CCCCCC; margin-top: 8px; }
-        .tooltip { cursor: help; border-bottom: 1px dotted #aaa; }
         .min-price { color: #00FF7F !important; font-weight: bold !important; }
         .max-price { color: #FF4500 !important; font-weight: bold !important; }
     </style>
@@ -324,7 +321,7 @@ with col_f2:
 with col_f3:
     st.write("")
 
-# Fechas para variaciones (solo si existen datos en esas fechas)
+# Fechas para variaciones
 hoy = fecha_fin
 ayer = hoy - timedelta(days=1)
 hace_7_dias = hoy - timedelta(days=7)
@@ -349,11 +346,36 @@ selected_super_ids = [super_options[n] for n in selected_super_nombres]
 st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
 
-# Total de productos propios (universo)
-total_productos_propios_universo = session.query(ProductoReferencia).filter(
-    ProductoReferencia.marca.in_(marcas_propias),
-    ProductoReferencia.activo == True
-).count()
+# ============================================================================
+# TOTAL DE PRODUCTOS PROPIOS (MANUAL) – Usted puede ajustar este número
+# ============================================================================
+TOTAL_PRODUCTOS_PROPIOS = 21   # ← CAMBIE AQUÍ SI EL NÚMERO ES DIFERENTE
+
+# Lista de productos propios (solo para mostrar, no afecta cálculos)
+PRODUCTOS_PROPIOS_LISTA = [
+    "Arroz La Lucha Tipo I (1 kg)",
+    "Harina de Trigo Leudante La Lucha (900 gr)",
+    "Harina de Trigo Todo Uso La Lucha (900 gr)",
+    "Mayonesa La Lucha (445 gr)",
+    "Lentejas La Lucha (400 gr)",
+    "Caraotas Rojas La Lucha (400 gr)",
+    "Caraotas Negras La Lucha (400 gr)",
+    "Aceite de Soya La Lucha (900 ml)",
+    "Avena en Hojuela La Lucha (800 gr)",
+    "Maíz para Cotufa La Lucha (400 gr)",
+    "Leche en Polvo Enriquecida La Lucha (900 gr)",
+    "Mezcla Para Torta Vainilla La Lucha (500 gr)",
+    "Mezcla Para Panquecas La Lucha (500 gr)",
+    "Mezcla para Preparar Brownies La Lucha (500 gr)",
+    "Mezcla para Torta de Chocolate La Lucha (500 gr)",
+    "Harina de Maíz Blanco Lucharepa (1 kg)",
+    "Harina de Maíz Tostado Fororo Simple (900 gr)",
+    "Crema de Arroz La Lucha (900 gr)",
+    "Arveja Verde Partida La Lucha (400 gr)",
+    "Huevos Purovo (12 unidades)",
+    "Huevos Purovo (15 unidades)"
+]
+# ============================================================================
 
 info_super = {}
 
@@ -362,7 +384,7 @@ if selected_super_nombres:
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
 
-        # Productos actuales en el período
+        # Productos propios que aparecen EN ESTE SUPERMERCADO (según la base de datos, con filtro de marcas propias)
         productos_actual = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -373,18 +395,15 @@ if selected_super_nombres:
         ).distinct().all()
         count_actual = len(productos_actual)
 
-        # Porcentaje de participación (sobre universo)
-        porcentaje = (count_actual / total_productos_propios_universo * 100) if total_productos_propios_universo > 0 else 0
+        # Porcentaje respecto al TOTAL MANUAL
+        porcentaje = (count_actual / TOTAL_PRODUCTOS_PROPIOS) * 100
 
-        # Variación diaria (solo si hay datos del día anterior)
+        # Variación diaria
         tiene_dia_anterior = session.query(PrecioHistorico).filter(
             PrecioHistorico.supermercado_id == sup_id,
             PrecioHistorico.fecha_extraccion == ayer,
             PrecioHistorico.producto_referencia_id.in_(
-                session.query(ProductoReferencia.id).filter(
-                    ProductoReferencia.marca.in_(marcas_propias),
-                    ProductoReferencia.activo == True
-                )
+                session.query(ProductoReferencia.id).filter(ProductoReferencia.marca.in_(marcas_propias), ProductoReferencia.activo == True)
             )
         ).first() is not None
 
@@ -401,18 +420,16 @@ if selected_super_nombres:
             var_diaria = ((count_actual - count_ayer) / count_ayer * 100) if count_ayer > 0 else 0
             flecha_diaria = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
             color_diaria = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
+            texto_diaria = f"{abs(var_diaria):.1f}%"
         else:
             var_diaria = None
 
-        # Variación semanal (si hay datos de hace 7 días)
+        # Variación semanal
         tiene_7d = session.query(PrecioHistorico).filter(
             PrecioHistorico.supermercado_id == sup_id,
             PrecioHistorico.fecha_extraccion == hace_7_dias,
             PrecioHistorico.producto_referencia_id.in_(
-                session.query(ProductoReferencia.id).filter(
-                    ProductoReferencia.marca.in_(marcas_propias),
-                    ProductoReferencia.activo == True
-                )
+                session.query(ProductoReferencia.id).filter(ProductoReferencia.marca.in_(marcas_propias), ProductoReferencia.activo == True)
             )
         ).first() is not None
 
@@ -429,10 +446,11 @@ if selected_super_nombres:
             var_semanal = ((count_actual - count_7d) / count_7d * 100) if count_7d > 0 else 0
             flecha_semanal = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
             color_semanal = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
+            texto_semanal = f"{abs(var_semanal):.1f}%"
         else:
             var_semanal = None
 
-        # Construir HTML de la tarjeta
+        # Tarjeta HTML
         html = f"""
         <div class="super-metric">
             <strong>{sup_nombre}</strong><br>
@@ -443,13 +461,13 @@ if selected_super_nombres:
         if var_diaria is not None:
             html += f"""
             <div style="font-size: 0.75rem; margin-top: 5px;">
-                📈 vs ayer: <span style="color:{color_diaria};">{flecha_diaria} {abs(var_diaria):.1f}%</span>
+                📈 vs ayer: <span style="color:{color_diaria};">{flecha_diaria} {texto_diaria}</span>
             </div>
             """
         if var_semanal is not None:
             html += f"""
             <div style="font-size: 0.75rem;">
-                📅 vs hace 7d: <span style="color:{color_semanal};">{flecha_semanal} {abs(var_semanal):.1f}%</span>
+                📅 vs hace 7d: <span style="color:{color_semanal};">{flecha_semanal} {texto_semanal}</span>
             </div>
             """
         html += "</div>"
@@ -457,10 +475,10 @@ if selected_super_nombres:
             st.markdown(html, unsafe_allow_html=True)
     st.markdown("---")
 
-# Expander de diagnóstico
-with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD)"):
-    for sup in selected_super_nombres:
-        sup_id = super_options[sup]
+# Expander de diagnóstico (para ver qué productos se están contando realmente)
+with st.expander("🔍 Productos propios encontrados en cada supermercado (según la BD)"):
+    for sup_nombre in selected_super_nombres:
+        sup_id = super_options[sup_nombre]
         productos_sup = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -469,25 +487,17 @@ with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD
             ProductoReferencia.marca.in_(marcas_propias),
             ProductoReferencia.activo == True
         ).distinct().all()
-        st.markdown(f"**{sup}** - {len(productos_sup)} productos")
+        st.markdown(f"**{sup_nombre}** - {len(productos_sup)} productos")
         if productos_sup:
-            df_detalle = pd.DataFrame([{"Producto (nombre_original)": p[0]} for p in productos_sup])
+            df_detalle = pd.DataFrame([p[0] for p in productos_sup], columns=["Producto (nombre_original)"])
             st.dataframe(df_detalle, use_container_width=True, hide_index=True)
         else:
-            st.caption("No hay productos")
+            st.caption("No hay productos propios en este supermercado")
 
-with st.expander("📋 Todos los productos propios registrados en la base de datos"):
-    productos_propios_reg = session.query(ProductoReferencia).filter(
-        ProductoReferencia.marca.in_(marcas_propias),
-        ProductoReferencia.activo == True
-    ).all()
-    if productos_propios_reg:
-        df_propios = pd.DataFrame([(p.id, p.marca, p.nombre_producto, p.presentacion) for p in productos_propios_reg],
-                                  columns=["ID", "Marca", "Producto", "Presentación"])
-        st.dataframe(df_propios, use_container_width=True, hide_index=True)
-        st.caption(f"Total de productos propios en la base de datos: {len(productos_propios_reg)}")
-    else:
-        st.info("No hay productos propios registrados.")
+with st.expander("📋 Lista manual de productos propios (para verificar)"):
+    df_manual = pd.DataFrame(PRODUCTOS_PROPIOS_LISTA, columns=["Producto propio"])
+    st.dataframe(df_manual, use_container_width=True, hide_index=True)
+    st.caption(f"Total considerado para el porcentaje: {TOTAL_PRODUCTOS_PROPIOS} productos")
 
 # ============================================================================
 # SELECTOR DE PRODUCTO PROPIO
@@ -541,7 +551,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA (con fecha común y colores en extremos)
+# TABLA COMPARATIVA (con fecha común y colores extremos)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -578,7 +588,7 @@ else:
                 celda = "Sin datos"
             df_valores.loc[prod_formateado, sup_nombre] = celda
     
-    # Identificar la fila del producto propio (para resaltar)
+    # Identificar la fila del producto propio
     nombre_propio_tabla = None
     for prod in productos_unicos:
         if producto_actual.nombre_producto.lower() in prod.lower() or producto_actual.marca.lower() in prod.lower():
@@ -587,10 +597,8 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Función para colorear precios extremos (mínimo y máximo) en cada fila
     def colorear_extremos(fila):
         estilos = []
-        # Extraer precios numéricos de cada celda
         precios = []
         for col in fila.index:
             celda = fila[col]
@@ -611,7 +619,7 @@ else:
             if p is None:
                 estilos.append('')
             elif p == min_precio:
-                estilos.append('class: "min-price"')  # Usar clase CSS
+                estilos.append('class: "min-price"')
             elif p == max_precio:
                 estilos.append('class: "max-price"')
             else:
@@ -623,7 +631,6 @@ else:
             return ['background-color: #2E7D32; color: white; font-weight: bold;'] * len(row)
         return [''] * len(row)
     
-    # Aplicar estilos
     styled = df_valores.style.apply(resaltar_fila, axis=1)
     styled = styled.apply(colorear_extremos, axis=1)
     styled = styled.set_properties(**{'text-align': 'center', 'font-size': '13px'})
@@ -640,11 +647,10 @@ else:
     st.markdown(f"<p class='centered-title'>📅 Precios correspondientes a la fecha más reciente con datos: {fecha_comun.strftime('%d/%m/%Y')} (cada celda muestra su última actualización hasta esa fecha)</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS (usando últimos precios de la tabla)
+# KPIS
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
-# Último precio del producto propio (de la tabla, ya calculado)
 if precios_propio:
     ultimo_precio_propio = max(precios_propio, key=lambda x: x.fecha_extraccion)
     precio_propio_ultimo = float(ultimo_precio_propio.precio_usd if usar_usd else ultimo_precio_propio.precio_bs)
@@ -654,7 +660,6 @@ else:
     precio_propio_ultimo = 0
     ultimo_precio_texto = "Sin datos"
 
-# Precios de competidores que aparecen en la tabla (excluyendo la fila propia)
 precios_competidores_tabla = []
 if 'df_valores' in locals() and nombre_propio_tabla:
     for idx in df_valores.index:
@@ -724,7 +729,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en los últimos precios disponibles: producto propio vs competidores mostrados en la tabla. Estadística: {st.session_state.estadistica} sobre los precios de competidores.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (sin cambios)
+# GRÁFICO EVOLUTIVO
 # ============================================================================
 titulo_est = "Mediana" if st.session_state.estadistica == "Mediana" else "Promedio"
 
@@ -803,7 +808,7 @@ else:
         st.info("No hay datos suficientes para el gráfico evolutivo.")
 
 # ============================================================================
-# BOXPLOT POR DÍA (sin cambios)
+# BOXPLOT POR DÍA
 # ============================================================================
 st.subheader("📊 Distribución de precios de la competencia por día (Boxplot)")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -849,9 +854,7 @@ else:
 # ============================================================================
 with st.expander("🏆 Comparativa de precios: Competidores más baratos vs producto propio"):
     if precios_propio and competidores:
-        # Último precio del producto propio ya lo tenemos
         precio_propio = precio_propio_ultimo
-        # Último precio de cada competidor
         ultimos_competidores = {}
         for p in competidores:
             key = p.nombre_original
@@ -916,7 +919,7 @@ with st.expander("📊 Evolución de precios del producto propio por supermercad
         st.warning("No hay precios del producto propio en el período seleccionado.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNÓSTICO (sin cambios)
+# EDITOR DE REGLAS Y DIAGNÓSTICO
 # ============================================================================
 with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
@@ -952,4 +955,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Los KPIs muestran el último precio del producto propio y el promedio/mediana de los competidores que aparecen en la tabla. El gráfico evolutivo usa el último precio por competidor hasta cada fecha. Las variaciones en productos por supermercado solo aparecen cuando hay datos comparables.")
+st.caption("🚀 Los KPIs muestran el último precio del producto propio y el promedio/mediana de los competidores que aparecen en la tabla. El gráfico evolutivo usa el último precio por competidor hasta cada fecha. Los porcentajes de productos por supermercado se calculan sobre un total manual de 21 productos propios.")
