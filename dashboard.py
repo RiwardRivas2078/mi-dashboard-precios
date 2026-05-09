@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS MEJORADO
+# CSS MEJORADO (corrige toggle, checkboxes, selectbox en modo oscuro)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -93,7 +93,6 @@ if st.session_state.tema == "light":
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label { background-color: white; padding: 6px 14px; border-radius: 30px; border: 1px solid #E5E5E5; }
         .stCheckbox label:hover { border-color: #CC0000; background-color: #FFF5F5; }
-        /* Tabla */
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -130,7 +129,6 @@ if st.session_state.tema == "light":
             padding-left: 16px;
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #6C757D; margin-top: 8px; }
-        /* Selector producto propio */
         div[data-baseweb="select"] div {
             color: #CC0000 !important;
         }
@@ -154,17 +152,25 @@ else:
         .super-metric { background-color: #2D2D2D; border-radius: 20px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-top: 3px solid #CC0000; color: white; }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
-        .stCheckbox label { background-color: #2D2D2D; padding: 6px 14px; border-radius: 30px; border: 1px solid #555; color: white !important; }
-        .stCheckbox label span { color: white !important; }
+        /* Checkboxes en modo oscuro */
+        .stCheckbox label {
+            background-color: #2D2D2D;
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: 1px solid #555;
+            color: white !important;
+        }
+        .stCheckbox label span {
+            color: white !important;
+        }
         /* Toggle USD/Bs */
-        .st-cb, .st-cc, .st-cd {
+        .st-b7, .st-b8, .st-b9, .st-ba, .st-cb, .st-cc, .st-cd {
             color: white !important;
         }
         /* Selector producto propio */
         div[data-baseweb="select"] div {
             color: #CC0000 !important;
         }
-        /* Tabla modo oscuro */
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -226,7 +232,7 @@ with col_t3:
     moneda = "USD" if usar_usd else "Bs"
 
 # ============================================================================
-# FUNCIONES AUXILIARES (sin cambios)
+# FUNCIONES AUXILIARES
 # ============================================================================
 def extraer_peso(nombre):
     if not nombre:
@@ -243,7 +249,6 @@ def extraer_peso(nombre):
     return ""
 
 def normalizar_categoria(nombre):
-    # (mantener igual que el original)
     if not nombre:
         return ""
     texto = normalize('NFKD', nombre).encode('ASCII', 'ignore').decode('ASCII').lower()
@@ -347,6 +352,21 @@ if selected_super_nombres:
     st.markdown("---")
 
 # ============================================================================
+# EXPANDER: LISTA DE PRODUCTOS PROPIOS INCLUIDOS
+# ============================================================================
+with st.expander("📋 Ver lista de productos propios actualmente en la base de datos"):
+    productos_propios_lista = session.query(ProductoReferencia).filter(
+        ProductoReferencia.marca.in_(marcas_propias),
+        ProductoReferencia.activo == True
+    ).all()
+    if productos_propios_lista:
+        df_propios = pd.DataFrame([(p.marca, p.nombre_producto, p.presentacion) for p in productos_propios_lista],
+                                  columns=["Marca", "Producto", "Presentación"])
+        st.dataframe(df_propios, use_container_width=True, hide_index=True)
+    else:
+        st.info("No hay productos propios definidos en la base de datos.")
+
+# ============================================================================
 # SELECTOR DE PRODUCTO PROPIO
 # ============================================================================
 productos_propios = session.query(ProductoReferencia).filter(
@@ -398,7 +418,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA CON FECHA COMÚN (última fecha con datos en el rango)
+# TABLA COMPARATIVA CON FECHA COMÚN Y COLORES POR PRECIO MÁX/MÍN
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -445,42 +465,50 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Función para resaltar precios máximo (rojo) y mínimo (verde) por fila, excluyendo la propia
-    def aplicar_colores_por_fila(df):
-        # Devuelve un DataFrame de estilos con colores
-        styles = pd.DataFrame('', index=df.index, columns=df.columns)
-        for idx in df.index:
-            # Recoger precios numéricos por columna
-            precios = []
-            celdas = []
-            for col in df.columns:
-                val = df.loc[idx, col]
-                if val != "Sin datos":
-                    try:
-                        precio = float(val.split()[0])
-                        precios.append(precio)
-                        celdas.append((col, precio))
-                    except:
-                        pass
-            if not precios:
-                continue
-            min_precio = min(precios)
-            max_precio = max(precios)
-            for col, precio in celdas:
-                if precio == min_precio:
-                    styles.loc[idx, col] = 'color: #00A859; font-weight: bold;'
-                elif precio == max_precio:
-                    styles.loc[idx, col] = 'color: #CC0000; font-weight: bold;'
-        return styles
+    # Función para colorear precios máximos y mínimos por fila (excluyendo la fila propia)
+    def colorear_extremos(row_idx):
+        # row_idx es el índice de la fila (string)
+        row = df_valores.loc[row_idx]
+        precios_numericos = []
+        for col in df_valores.columns:
+            val = row[col]
+            if val != "Sin datos":
+                try:
+                    precio = float(val.split()[0])
+                    precios_numericos.append((col, precio))
+                except:
+                    pass
+        if not precios_numericos:
+            return [''] * len(df_valores.columns)
+        precios_solo = [p[1] for p in precios_numericos]
+        min_precio = min(precios_solo)
+        max_precio = max(precios_solo)
+        estilos = []
+        for col in df_valores.columns:
+            precio_col = None
+            for (c, p) in precios_numericos:
+                if c == col:
+                    precio_col = p
+                    break
+            if precio_col is None:
+                estilos.append('')
+            elif precio_col == min_precio:
+                estilos.append('color: #00A859; font-weight: bold;')
+            elif precio_col == max_precio:
+                estilos.append('color: #CC0000; font-weight: bold;')
+            else:
+                estilos.append('')
+        return estilos
     
-    # Aplicar estilo de fila propia y colores extremos
+    # Resaltar fila del producto propio
     def resaltar_fila(row):
         if row.name == nombre_propio_tabla:
             return ['background-color: #2E7D32; color: white; font-weight: bold;'] * len(row)
         return [''] * len(row)
     
+    # Aplicar estilos
     styled = df_valores.style.apply(resaltar_fila, axis=1)
-    styled = styled.apply(aplicar_colores_por_fila, axis=None)  # aplicar por fila
+    styled = styled.apply(colorear_extremos, axis=1)
     styled = styled.set_properties(**{'text-align': 'center', 'font-size': '13px'})
     styled = styled.set_table_styles([
         {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#CC0000'), ('color', 'white'), ('font-weight', 'bold')]},
@@ -559,10 +587,9 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha) - CON SUBHEADER DE PERÍODO
+# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha)
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
-# Subheader con período
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
 
 fechas_disponibles = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
@@ -631,14 +658,13 @@ else:
                 hovermode="x unified",
                 font=dict(color="black", size=12)
             )
-        # Ajustar eje X para mostrar todas las fechas sin saltos excesivos
         fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45, dtick="D1")
         st.plotly_chart(fig_evol, use_container_width=True)
     else:
         st.info("No hay datos suficientes para el gráfico evolutivo.")
 
 # ============================================================================
-# BOXPLOT POR DÍA - CON SUBHEADER DE PERÍODO
+# BOXPLOT POR DÍA
 # ============================================================================
 st.subheader("📊 Distribución de precios de la competencia por día (Boxplot)")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -680,7 +706,47 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNÓSTICO (sin cambios)
+# NUEVO GRÁFICO: EVOLUCIÓN POR SUPERMERCADO (EXPANDER)
+# ============================================================================
+with st.expander("📊 Evolución de precios del producto propio por supermercado"):
+    if precios_propio:
+        df_sup = []
+        for p in precios_propio:
+            sup_nombre = session.get(Supermercado, p.supermercado_id).nombre
+            precio = p.precio_usd if usar_usd else p.precio_bs
+            df_sup.append({"Fecha": p.fecha_extraccion.date(), "Supermercado": sup_nombre, "Precio": float(precio)})
+        df_sup = pd.DataFrame(df_sup)
+        if not df_sup.empty:
+            fig_sup = px.line(df_sup, x="Fecha", y="Precio", color="Supermercado", markers=True,
+                              labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
+                              title=f"Evolución de {producto_actual.marca} - {producto_actual.nombre_producto} por supermercado")
+            fig_sup.update_traces(marker=dict(size=8))
+            if st.session_state.tema == "dark":
+                fig_sup.update_layout(
+                    plot_bgcolor="#2D2D2D",
+                    paper_bgcolor="#2D2D2D",
+                    height=400,
+                    font=dict(color="white"),
+                    legend=dict(font=dict(color="white"), bgcolor="#2D2D2D", bordercolor="white", borderwidth=1)
+                )
+                fig_sup.update_xaxes(title_font_color="white", tickfont_color="white", gridcolor="#555555")
+                fig_sup.update_yaxes(title_font_color="white", tickfont_color="white", gridcolor="#555555")
+            else:
+                fig_sup.update_layout(
+                    plot_bgcolor="white",
+                    paper_bgcolor="white",
+                    height=400,
+                    font=dict(color="black")
+                )
+            fig_sup.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
+            st.plotly_chart(fig_sup, use_container_width=True)
+        else:
+            st.info("No hay datos suficientes para el gráfico por supermercado.")
+    else:
+        st.warning("No hay precios del producto propio en el período seleccionado.")
+
+# ============================================================================
+# EDITOR DE REGLAS Y DIAGNÓSTICO
 # ============================================================================
 with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
@@ -716,4 +782,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado.")
+st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado. Nuevo gráfico por supermercado.")
