@@ -11,7 +11,7 @@ from unicodedata import normalize
 from collections import defaultdict
 
 # ============================================================================
-# CONEXIÓN DIRECTA A SUPABASE
+# CONEXIÓN A SUPABASE
 # ============================================================================
 DB_URI_NUBE = "postgresql://postgres.tmeyajjnufkzzlgsuxxh:dNLKduxW3lKzQt7A@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS (mejorado con flechas y tarjetas)
+# CSS (igual al anterior, con tarjetas mejoradas)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -135,6 +135,7 @@ if st.session_state.tema == "light":
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #6C757D; margin-top: 8px; }
         div[data-baseweb="select"] div { color: #CC0000 !important; }
+        .tooltip { cursor: help; border-bottom: 1px dotted #aaa; }
     </style>
     """
 else:
@@ -212,6 +213,7 @@ else:
             color: #FFAAAA;
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #CCCCCC; margin-top: 8px; }
+        .tooltip { cursor: help; border-bottom: 1px dotted #aaa; }
     </style>
     """
 
@@ -335,7 +337,6 @@ selected_super_ids = [super_options[n] for n in selected_super_nombres]
 st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
 
-# Fechas para variaciones
 hoy = fecha_fin
 ayer = hoy - timedelta(days=1)
 hace_7_dias = hoy - timedelta(days=7)
@@ -346,8 +347,6 @@ if selected_super_nombres:
     cols_metric = st.columns(len(selected_super_nombres))
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
-
-        # Productos actuales (período)
         productos_actual = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -359,7 +358,6 @@ if selected_super_nombres:
         lista_actual = [p[0] for p in productos_actual]
         count_actual = len(lista_actual)
 
-        # Productos día anterior
         productos_ayer = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -370,7 +368,6 @@ if selected_super_nombres:
         ).distinct().all()
         count_ayer = len(productos_ayer)
 
-        # Productos hace 7 días
         productos_7d = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -495,7 +492,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA (última fecha común)
+# TABLA COMPARATIVA (con fecha común)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -588,12 +585,11 @@ else:
     st.markdown(f"<p class='centered-title'>📅 Precios correspondientes a la fecha más reciente con datos: {fecha_comun.strftime('%d/%m/%Y')} (cada celda muestra su última actualización hasta esa fecha)</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS y cobertura CORREGIDOS (usando TODOS los precios del período)
+# KPIs CON TOOLTIP EXPLICATIVO
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
-# ---- CORRECCIÓN AQUÍ ----
-# Usamos TODOS los precios del producto propio y de la competencia en el período, no solo la última fecha.
+# Todos los precios del producto propio en el período
 todos_precios_propio = [p.precio_usd if usar_usd else p.precio_bs for p in precios_propio]
 todos_precios_comp = [p.precio_usd if usar_usd else p.precio_bs for p in competidores]
 
@@ -606,9 +602,7 @@ else:
     valor_comp = np.mean(todos_precios_comp) if todos_precios_comp else 0
     titulo_est = "Promedio"
 
-# Cobertura (opcional, se mantiene)
 cobertura, datos_existentes, combinaciones_totales = calcular_cobertura(todos_precios_comp, productos_unicos, super_ids_unicos)
-# -----------------------------------------------
 
 if valor_prop > valor_comp:
     clase_metric = "metric-red"
@@ -626,16 +620,18 @@ else:
 col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown(f"""
-    <div class="{clase_metric}">
+    <div class="{clase_metric}" title="Promedio/Mediana de {len(todos_precios_propio)} precios registrados entre {fecha_inicio.strftime('%d/%m/%Y')} y {fecha_fin.strftime('%d/%m/%Y')}">
         <strong>💰 {producto_actual.marca} ({titulo_est})</strong><br>
         <span style="font-size: 1.8rem;">{valor_prop:.2f} {moneda}</span>
+        <div style="font-size: 0.7rem; margin-top: 4px;">📊 Basado en {len(todos_precios_propio)} precios</div>
     </div>
     """, unsafe_allow_html=True)
 with col2:
     st.markdown(f"""
-    <div class="{clase_metric}">
+    <div class="{clase_metric}" title="Promedio/Mediana de {len(todos_precios_comp)} precios de competidores">
         <strong>🏷️ Competencia ({titulo_est})</strong><br>
         <span style="font-size: 1.8rem;">{valor_comp:.2f} {moneda}</span>
+        <div style="font-size: 0.7rem; margin-top: 4px;">📊 Basado en {len(todos_precios_comp)} precios</div>
     </div>
     """, unsafe_allow_html=True)
 with col3:
@@ -653,7 +649,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (sin cambios)
+# GRÁFICO EVOLUTIVO (igual)
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -848,4 +844,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 KPIs calculados con todos los precios del período. Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Variación diaria y semanal con flechas.")
+st.caption("🚀 Los KPIs muestran el promedio/mediana de TODOS los precios del período (no solo el último). La tabla muestra el precio más reciente de cada producto hasta la fecha común del gráfico. Flechas y colores indican variación en la cantidad de productos por supermercado.")
