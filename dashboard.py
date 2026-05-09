@@ -25,7 +25,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ============================================================================
-# MODELOS
+# MODELOS (iguales)
 # ============================================================================
 class Supermercado(Base):
     __tablename__ = 'supermercados'
@@ -61,7 +61,7 @@ class PrecioHistorico(Base):
     matched_automatically = Column(Boolean, default=False)
 
 # ============================================================================
-# CONFIGURACIÓN DE TEMA Y ESTADÍSTICA
+# CONFIGURACIÓN DE TEMA Y ESTADÍSTICA (igual)
 # ============================================================================
 st.set_page_config(page_title="Market Intelligence - Purolomo", page_icon="🐔", layout="wide")
 
@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS (corrige modo oscuro, etc.)
+# CSS (incluye mejoras para tarjetas)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -88,7 +88,18 @@ if st.session_state.tema == "light":
         .metric-red { background-color: #FFF5F5; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; color: #1E1E1E; }
         .metric-green { background-color: #F0FFF4; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; color: #1E1E1E; }
         .metric-neutral { background-color: #F2F2F2; border-left: 6px solid #6C757D; border-radius: 16px; padding: 16px; color: #1E1E1E; }
-        .super-metric { background-color: white; border-radius: 20px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 3px solid #CC0000; }
+        .super-metric {
+            background-color: white;
+            border-radius: 20px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-top: 4px solid #CC0000;
+            transition: transform 0.2s;
+        }
+        .super-metric:hover {
+            transform: translateY(-2px);
+        }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label { background-color: white; padding: 6px 14px; border-radius: 30px; border: 1px solid #E5E5E5; }
@@ -149,7 +160,18 @@ else:
         .metric-red { background-color: #2D2D2D; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; color: #FFFFFF; }
         .metric-green { background-color: #2D2D2D; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; color: #FFFFFF; }
         .metric-neutral { background-color: #2D2D2D; border-left: 6px solid #6C757D; border-radius: 16px; padding: 16px; color: #FFFFFF; }
-        .super-metric { background-color: #2D2D2D; border-radius: 20px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-top: 3px solid #CC0000; color: white; }
+        .super-metric {
+            background-color: #2D2D2D;
+            border-radius: 20px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-top: 4px solid #CC0000;
+            transition: transform 0.2s;
+        }
+        .super-metric:hover {
+            transform: translateY(-2px);
+        }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label {
@@ -222,7 +244,7 @@ st.title("📊 Market Intelligence - Purolomo & Marcas Aliadas")
 st.caption("Comparativa de precios - Tabla con precios hasta la última fecha común al gráfico")
 
 # ============================================================================
-# BARRA SUPERIOR
+# BARRA SUPERIOR (sin cambios)
 # ============================================================================
 col_t1, col_t2, col_t3 = st.columns([1, 1, 3])
 with col_t1:
@@ -236,7 +258,7 @@ with col_t3:
     moneda = "USD" if usar_usd else "Bs"
 
 # ============================================================================
-# FUNCIONES AUXILIARES
+# FUNCIONES AUXILIARES (iguales)
 # ============================================================================
 def extraer_peso(nombre):
     if not nombre:
@@ -298,7 +320,7 @@ def formatear_nombre_producto(nombre):
     return " ".join(palabras).capitalize()
 
 # ============================================================================
-# CONEXIÓN A BD Y FILTROS
+# CONEXIÓN A BD Y FILTROS (igual)
 # ============================================================================
 session = SessionLocal()
 marcas_propias = ['La Lucha', 'Punta de Monte', 'Alibal', 'Purolomo', 'San Blas', 'Purovo', 'Milpa']
@@ -395,27 +417,32 @@ if selected_super_nombres:
             "var_semanal": var_semanal
         }
 
-        # Mostrar métrica con variaciones
+        # Mostrar métrica MEJORADA con flechas
         with cols_metric[idx]:
+            # Flechas y colores
+            flecha_diaria = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
+            flecha_semanal = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
+            color_diaria = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
+            color_semanal = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
+            
             st.markdown(f"""
             <div class="super-metric">
                 <strong>{sup_nombre}</strong><br>
-                <span style="font-size: 1.8rem; color:#CC0000;">{count_actual}</span><br>
-                <span style="font-size: 0.7rem;">productos aliados</span>
-                <div style="font-size: 0.7rem; margin-top: 5px;">
-                    📈 vs ayer: <span style="color:{'#00A859' if var_diaria >= 0 else '#CC0000'}">{var_diaria:+.1f}%</span><br>
-                    📊 vs hace 7d: <span style="color:{'#00A859' if var_semanal >= 0 else '#CC0000'}">{var_semanal:+.1f}%</span>
+                <span style="font-size: 2rem; color:#CC0000; font-weight:bold;">{count_actual}</span><br>
+                <span style="font-size: 0.75rem;">productos aliados</span>
+                <div style="font-size: 0.75rem; margin-top: 8px; text-align:center;">
+                    <span>📈 vs ayer: <span style="color:{color_diaria}; font-weight:bold;">{flecha_diaria} {abs(var_diaria):.1f}%</span></span><br>
+                    <span>📅 vs hace 7d: <span style="color:{color_semanal}; font-weight:bold;">{flecha_semanal} {abs(var_semanal):.1f}%</span></span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-# Expander que muestra los productos reales (con su marca asignada) para depuración
+# Expander de diagnóstico mejorado
 with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD)"):
     for sup, data in info_super.items():
         st.markdown(f"**{sup}** - {data['count']} productos")
         if data['productos']:
-            # Para cada producto, obtener su marca desde productos_referencia (puede ser lento, pero son pocos)
             prod_con_marca = []
             for prod in data['productos']:
                 marca_asignada = session.query(ProductoReferencia.marca).join(
@@ -432,8 +459,22 @@ with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD
         else:
             st.caption("No hay productos")
 
+# Expander adicional: lista de productos propios registrados (para detectar faltantes)
+with st.expander("📋 Todos los productos propios registrados en la base de datos"):
+    productos_propios_reg = session.query(ProductoReferencia).filter(
+        ProductoReferencia.marca.in_(marcas_propias),
+        ProductoReferencia.activo == True
+    ).all()
+    if productos_propios_reg:
+        df_propios = pd.DataFrame([(p.id, p.marca, p.nombre_producto, p.presentacion) for p in productos_propios_reg],
+                                  columns=["ID", "Marca", "Producto", "Presentación"])
+        st.dataframe(df_propios, use_container_width=True, hide_index=True)
+        st.caption("Si espera ver algún producto (ej. 'Mezcla para Torta la Lucha de vainilla 500 gr') y no aparece, significa que no está registrado en `productos_referencia` con los criterios adecuados (marca correcta, activo=true, es_propio=true).")
+    else:
+        st.info("No hay productos propios registrados.")
+
 # ============================================================================
-# SELECTOR DE PRODUCTO PROPIO
+# SELECTOR DE PRODUCTO PROPIO (igual)
 # ============================================================================
 productos_propios = session.query(ProductoReferencia).filter(
     ProductoReferencia.marca.in_(marcas_propias),
@@ -445,7 +486,7 @@ producto_id = opciones[producto_label]
 producto_actual = session.get(ProductoReferencia, producto_id)
 
 # ============================================================================
-# PRECIOS DEL PRODUCTO PROPIO
+# PRECIOS DEL PRODUCTO PROPIO (igual)
 # ============================================================================
 precios_propio = session.query(PrecioHistorico).filter(
     PrecioHistorico.producto_referencia_id == producto_id,
@@ -456,7 +497,7 @@ if not precios_propio:
     st.warning(f"⚠️ El producto '{producto_label}' no tiene precios en los supermercados seleccionados. Se mostrará solo la competencia.")
 
 # ============================================================================
-# COMPETIDORES
+# COMPETIDORES (igual)
 # ============================================================================
 todos_precios = session.query(PrecioHistorico).filter(
     PrecioHistorico.supermercado_id.in_(selected_super_ids),
@@ -484,7 +525,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA (corregida, sin error KeyError)
+# TABLA COMPARATIVA (igual)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -577,7 +618,7 @@ else:
     st.markdown(f"<p class='centered-title'>📅 Precios correspondientes a la fecha más reciente con datos: {fecha_comun.strftime('%d/%m/%Y')} (cada celda muestra su última actualización hasta esa fecha)</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS y cobertura
+# KPIS y cobertura (igual)
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
@@ -643,7 +684,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO
+# GRÁFICO EVOLUTIVO (igual)
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -720,7 +761,7 @@ else:
         st.info("No hay datos suficientes para el gráfico evolutivo.")
 
 # ============================================================================
-# BOXPLOT POR DÍA
+# BOXPLOT POR DÍA (igual)
 # ============================================================================
 st.subheader("📊 Distribución de precios de la competencia por día (Boxplot)")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -762,7 +803,7 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# GRÁFICO POR SUPERMERCADO (EXPANDER)
+# GRÁFICO POR SUPERMERCADO (EXPANDER) (igual)
 # ============================================================================
 with st.expander("📊 Evolución de precios del producto propio por supermercado"):
     if precios_propio:
@@ -802,7 +843,7 @@ with st.expander("📊 Evolución de precios del producto propio por supermercad
         st.warning("No hay precios del producto propio en el período seleccionado.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNÓSTICO
+# EDITOR DE REGLAS Y DIAGNÓSTICO (igual)
 # ============================================================================
 with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
@@ -838,4 +879,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado. Variación diaria y semanal en productos por supermercado.")
+st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado. Variación diaria y semanal en productos por supermercado con flechas.")
