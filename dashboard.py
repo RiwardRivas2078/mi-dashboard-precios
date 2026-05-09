@@ -668,6 +668,9 @@ st.caption(f"🔍 Análisis basado en los últimos precios disponibles: producto
 # ============================================================================
 # GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha)
 # ============================================================================
+# Definir titulo_est (estadística) para usar en título y leyendas
+titulo_est = "Mediana" if st.session_state.estadistica == "Mediana" else "Promedio"
+
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
 
