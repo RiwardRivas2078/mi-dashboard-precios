@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS MEJORADO (corrige toggle, checkboxes, selectbox, inputs fecha en modo oscuro)
+# CSS (idéntico al anterior pero incluyendo correcciones de color)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -152,7 +152,6 @@ else:
         .super-metric { background-color: #2D2D2D; border-radius: 20px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-top: 3px solid #CC0000; color: white; }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
-        /* Checkboxes en modo oscuro */
         .stCheckbox label {
             background-color: #2D2D2D;
             padding: 6px 14px;
@@ -163,11 +162,9 @@ else:
         .stCheckbox label span {
             color: white !important;
         }
-        /* Toggle USD/Bs - forzar texto blanco */
         .st-b7, .st-b8, .st-b9, .st-ba, .st-cb, .st-cc, .st-cd, .stToggle label, .stToggle span {
             color: white !important;
         }
-        /* Inputs de fecha - texto blanco sobre fondo oscuro */
         .stDateInput input, .stDateInput label {
             color: white !important;
             background-color: #2D2D2D !important;
@@ -175,7 +172,6 @@ else:
         .stDateInput div {
             color: white !important;
         }
-        /* Selector producto propio */
         div[data-baseweb="select"] div {
             color: #CC0000 !important;
         }
@@ -346,14 +342,16 @@ if selected_super_nombres:
     cols_metric = st.columns(len(selected_super_nombres))
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
-        # Obtener la lista de productos propios distintos que tienen precio en este supermercado
-        productos_sup = session.query(func.distinct(PrecioHistorico.nombre_original)).filter(
+        # Obtener la lista de productos propios distintos que tienen precio en este supermercado (basado en nombre_original)
+        # Usamos un JOIN con productos_referencia para asegurar que solo cuente productos de marcas_propias
+        productos_sup = session.query(PrecioHistorico.nombre_original).join(
+            ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
+        ).filter(
             PrecioHistorico.supermercado_id == sup_id,
             PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin),
-            PrecioHistorico.producto_referencia_id.in_(
-                session.query(ProductoReferencia.id).filter(ProductoReferencia.marca.in_(marcas_propias))
-            )
-        ).all()
+            ProductoReferencia.marca.in_(marcas_propias),
+            ProductoReferencia.activo == True
+        ).distinct().all()
         productos_sup_lista = [p[0] for p in productos_sup]
         productos_por_super[sup_nombre] = productos_sup_lista
         count = len(productos_sup_lista)
@@ -367,12 +365,13 @@ if selected_super_nombres:
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-# Expander que muestra la lista de productos por supermercado (coincide con los contadores)
-with st.expander("📋 Productos por supermercado (los que aparecen en los contadores)"):
+# Expander que muestra la lista de productos por supermercado
+with st.expander("📋 Ver lista de productos por supermercado (coincide con los contadores)"):
     for sup, prods in productos_por_super.items():
         st.markdown(f"**{sup}** ({len(prods)} productos)")
         if prods:
-            df_prods = pd.DataFrame({"Producto": prods})
+            # Mostrar en formato de tabla
+            df_prods = pd.DataFrame({"Producto (nombre_original)": prods})
             st.dataframe(df_prods, use_container_width=True, hide_index=True)
         else:
             st.caption("No hay productos registrados en este supermercado.")
@@ -476,34 +475,34 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Función para resaltar extremos (recibe la fila como Series)
+    # Función para resaltar extremos (sin usar df_valores global)
     def colorear_extremos(fila):
-        # fila es una pandas Series con los valores de la fila
+        # fila es una pandas Series (los valores de la fila)
         estilos = []
-        precios_valores = []
-        # Recoger precios numéricos de cada columna
+        precios = []
+        # Extraer precios numéricos de cada columna
         for col in fila.index:
             celda = fila[col]
             if celda != "Sin datos":
                 try:
                     precio = float(celda.split()[0])
-                    precios_valores.append((col, precio))
+                    precios.append((col, precio))
                 except:
-                    precios_valores.append((col, None))
+                    precios.append((col, None))
             else:
-                precios_valores.append((col, None))
-        # Filtrar solo los que tienen precio
-        precios_validos = [(col, p) for (col, p) in precios_valores if p is not None]
-        if not precios_validos:
+                precios.append((col, None))
+        # Filtrar los que tienen precio
+        validos = [(col, p) for (col, p) in precios if p is not None]
+        if not validos:
             return [''] * len(fila)
-        minimo = min(p[1] for p in precios_validos)
-        maximo = max(p[1] for p in precios_validos)
-        for col, p in precios_valores:
+        min_precio = min(p[1] for p in validos)
+        max_precio = max(p[1] for p in validos)
+        for col, p in precios:
             if p is None:
                 estilos.append('')
-            elif p == minimo:
+            elif p == min_precio:
                 estilos.append('color: #00A859; font-weight: bold;')
-            elif p == maximo:
+            elif p == max_precio:
                 estilos.append('color: #CC0000; font-weight: bold;')
             else:
                 estilos.append('')
@@ -755,7 +754,7 @@ with st.expander("📊 Evolución de precios del producto propio por supermercad
         st.warning("No hay precios del producto propio en el período seleccionado.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNÓSTICO
+# EDITOR DE REGLAS Y DIAGNÓSTICO (sin cambios)
 # ============================================================================
 with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
