@@ -11,7 +11,7 @@ from unicodedata import normalize
 from collections import defaultdict
 
 # ============================================================================
-# CONEXIÓN DIRECTA A SUPABASE (copia tu URI aquí)
+# CONEXIÓN DIRECTA A SUPABASE
 # ============================================================================
 DB_URI_NUBE = "postgresql://postgres.tmeyajjnufkzzlgsuxxh:dNLKduxW3lKzQt7A@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
@@ -25,7 +25,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ============================================================================
-# MODELOS (exactamente como en Supabase)
+# MODELOS
 # ============================================================================
 class Supermercado(Base):
     __tablename__ = 'supermercados'
@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS PARA AMBOS TEMAS - CORREGIDO PARA MODO OSCURO (textos legibles)
+# CSS MEJORADO
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -85,15 +85,15 @@ if st.session_state.tema == "light":
         .stApp { background-color: #F8F9FA; }
         .stApp, .stMarkdown, .stDataFrame, .stSelectbox, .stMultiSelect, .stDateInput, .stCheckbox, .stToggle, .stButton { color: #1E1E1E; }
         h1, h2, h3 { color: #CC0000 !important; }
-        .metric-red { background-color: #FFF5F5; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); color: #1E1E1E; }
-        .metric-green { background-color: #F0FFF4; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); color: #1E1E1E; }
+        .metric-red { background-color: #FFF5F5; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; color: #1E1E1E; }
+        .metric-green { background-color: #F0FFF4; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; color: #1E1E1E; }
         .metric-neutral { background-color: #F2F2F2; border-left: 6px solid #6C757D; border-radius: 16px; padding: 16px; color: #1E1E1E; }
-        .super-metric { background-color: white; border-radius: 20px; padding: 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 3px solid #CC0000; }
+        .super-metric { background-color: white; border-radius: 20px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 3px solid #CC0000; }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label { background-color: white; padding: 6px 14px; border-radius: 30px; border: 1px solid #E5E5E5; }
         .stCheckbox label:hover { border-color: #CC0000; background-color: #FFF5F5; }
-        /* Estilos tabla */
+        /* Tabla */
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -109,7 +109,6 @@ if st.session_state.tema == "light":
             font-weight: bold;
             text-align: center;
             padding: 12px 8px;
-            font-size: 14px;
         }
         .dataframe td {
             text-align: center;
@@ -123,7 +122,6 @@ if st.session_state.tema == "light":
         }
         .dataframe tr:hover td {
             background-color: #FFF0F0;
-            transition: 0.2s;
         }
         .dataframe td:first-child {
             font-weight: 600;
@@ -132,34 +130,41 @@ if st.session_state.tema == "light":
             padding-left: 16px;
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #6C757D; margin-top: 8px; }
+        /* Selector producto propio */
+        div[data-baseweb="select"] div {
+            color: #CC0000 !important;
+        }
     </style>
     """
 else:
     tema_css = """
     <style>
-        /* Fondo general oscuro */
         .stApp { background-color: #121212; }
-        /* Todos los textos base en blanco */
         .stApp, .stMarkdown, .stDataFrame, .stSelectbox, .stMultiSelect, .stDateInput, .stCheckbox, .stToggle, .stButton, label, .st-df, .st-emotion-cache-1v0mbdj, .st-emotion-cache-10trblm, .st-emotion-cache-1r4qj8v, .st-emotion-cache-1v3ca8t, .st-emotion-cache-1wivap2, .st-emotion-cache-183lzff, .st-emotion-cache-1kyxreq, .st-emotion-cache-1aumxhk, .st-emotion-cache-16txtl3, .st-emotion-cache-1inwz65 {
             color: #FFFFFF !important;
         }
-        /* Encabezados rojos */
         h1, h2, h3, h4, h5, h6 { color: #CC0000 !important; }
-        /* Texto dentro de los expanders y otros */
         .streamlit-expanderHeader, .streamlit-expanderContent {
             color: #FFFFFF !important;
             background-color: #1E1E1E !important;
         }
-        /* KPIs en modo oscuro */
-        .metric-red { background-color: #2D2D2D; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); color: #FFFFFF; }
-        .metric-green { background-color: #2D2D2D; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); color: #FFFFFF; }
+        .metric-red { background-color: #2D2D2D; border-left: 6px solid #CC0000; border-radius: 16px; padding: 16px; color: #FFFFFF; }
+        .metric-green { background-color: #2D2D2D; border-left: 6px solid #00A859; border-radius: 16px; padding: 16px; color: #FFFFFF; }
         .metric-neutral { background-color: #2D2D2D; border-left: 6px solid #6C757D; border-radius: 16px; padding: 16px; color: #FFFFFF; }
-        .super-metric { background-color: #2D2D2D; border-radius: 20px; padding: 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-top: 3px solid #CC0000; color: white; }
+        .super-metric { background-color: #2D2D2D; border-radius: 20px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-top: 3px solid #CC0000; color: white; }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
-        .stCheckbox label { background-color: #2D2D2D; padding: 6px 14px; border-radius: 30px; border: 1px solid #555; color: white; }
-        .stCheckbox label:hover { border-color: #CC0000; background-color: #3D3D3D; }
-        /* Tabla modo oscuro mejorada */
+        .stCheckbox label { background-color: #2D2D2D; padding: 6px 14px; border-radius: 30px; border: 1px solid #555; color: white !important; }
+        .stCheckbox label span { color: white !important; }
+        /* Toggle USD/Bs */
+        .st-cb, .st-cc, .st-cd {
+            color: white !important;
+        }
+        /* Selector producto propio */
+        div[data-baseweb="select"] div {
+            color: #CC0000 !important;
+        }
+        /* Tabla modo oscuro */
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -188,7 +193,6 @@ else:
         }
         .dataframe tr:hover td {
             background-color: #4A4A4A;
-            transition: 0.2s;
         }
         .dataframe td:first-child {
             font-weight: 600;
@@ -198,14 +202,6 @@ else:
             color: #FFAAAA;
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #CCCCCC; margin-top: 8px; }
-        /* Asegurar que el selectbox tenga texto blanco */
-        .stSelectbox label, .stSelectbox div, .stSelectbox span {
-            color: white !important;
-        }
-        /* Asegurar que los inputs de fecha tengan texto blanco */
-        .stDateInput label, .stDateInput div {
-            color: white !important;
-        }
     </style>
     """
 
@@ -224,7 +220,7 @@ with col_t1:
     st.button(f"{tema_icono} Tema", on_click=toggle_tema, help="Cambiar tema")
 with col_t2:
     estadistica_icono = "📊" if st.session_state.estadistica == "Mediana" else "📈"
-    st.button(f"{estadistica_icono} {st.session_state.estadistica}", on_click=toggle_estadistica, help="Alternar entre mediana y promedio")
+    st.button(f"{estadistica_icono} {st.session_state.estadistica}", on_click=toggle_estadistica, help="Alternar mediana/promedio")
 with col_t3:
     usar_usd = st.toggle("💰 USD", value=True)
     moneda = "USD" if usar_usd else "Bs"
@@ -247,6 +243,7 @@ def extraer_peso(nombre):
     return ""
 
 def normalizar_categoria(nombre):
+    # (mantener igual que el original)
     if not nombre:
         return ""
     texto = normalize('NFKD', nombre).encode('ASCII', 'ignore').decode('ASCII').lower()
@@ -403,14 +400,12 @@ else:
 # ============================================================================
 # TABLA COMPARATIVA CON FECHA COMÚN (última fecha con datos en el rango)
 # ============================================================================
-# Obtener todas las fechas ordenadas del rango (de todos los precios, propios y competidores)
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
     st.warning("No hay fechas disponibles.")
     st.stop()
 else:
-    fecha_comun = todas_fechas[-1]  # la fecha más reciente con datos
-    # Para cada combinación (supermercado, nombre_original), buscar el precio más reciente con fecha <= fecha_comun
+    fecha_comun = todas_fechas[-1]
     ultimos_hasta_fecha = {}
     for p in (precios_propio + competidores):
         if p.fecha_extraccion.date() <= fecha_comun:
@@ -427,7 +422,7 @@ else:
     super_ids_unicos = sorted(set(k[0] for k in ultimos_hasta_fecha.keys()))
     super_nombres = [session.get(Supermercado, sid).nombre for sid in super_ids_unicos]
     
-    # Crear DataFrame con celdas que muestran "precio (dd/mm)"
+    # Crear DataFrame con celdas "precio (dd/mm)"
     df_valores = pd.DataFrame(index=[formatear_nombre_producto(prod) for prod in productos_unicos], columns=super_nombres)
     for prod in productos_unicos:
         prod_formateado = formatear_nombre_producto(prod)
@@ -441,7 +436,7 @@ else:
                 celda = "Sin datos"
             df_valores.loc[prod_formateado, sup_nombre] = celda
     
-    # Identificar producto propio para resaltar fila
+    # Identificar producto propio
     nombre_propio_tabla = None
     for prod in productos_unicos:
         if producto_actual.nombre_producto.lower() in prod.lower() or producto_actual.marca.lower() in prod.lower():
@@ -450,13 +445,42 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Aplicar estilos mejorados usando pandas Styler
+    # Función para resaltar precios máximo (rojo) y mínimo (verde) por fila, excluyendo la propia
+    def aplicar_colores_por_fila(df):
+        # Devuelve un DataFrame de estilos con colores
+        styles = pd.DataFrame('', index=df.index, columns=df.columns)
+        for idx in df.index:
+            # Recoger precios numéricos por columna
+            precios = []
+            celdas = []
+            for col in df.columns:
+                val = df.loc[idx, col]
+                if val != "Sin datos":
+                    try:
+                        precio = float(val.split()[0])
+                        precios.append(precio)
+                        celdas.append((col, precio))
+                    except:
+                        pass
+            if not precios:
+                continue
+            min_precio = min(precios)
+            max_precio = max(precios)
+            for col, precio in celdas:
+                if precio == min_precio:
+                    styles.loc[idx, col] = 'color: #00A859; font-weight: bold;'
+                elif precio == max_precio:
+                    styles.loc[idx, col] = 'color: #CC0000; font-weight: bold;'
+        return styles
+    
+    # Aplicar estilo de fila propia y colores extremos
     def resaltar_fila(row):
         if row.name == nombre_propio_tabla:
             return ['background-color: #2E7D32; color: white; font-weight: bold;'] * len(row)
         return [''] * len(row)
     
     styled = df_valores.style.apply(resaltar_fila, axis=1)
+    styled = styled.apply(aplicar_colores_por_fila, axis=None)  # aplicar por fila
     styled = styled.set_properties(**{'text-align': 'center', 'font-size': '13px'})
     styled = styled.set_table_styles([
         {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#CC0000'), ('color', 'white'), ('font-weight', 'bold')]},
@@ -473,7 +497,6 @@ else:
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
-# Calcular promedios/medianas usando los mismos precios que están en la tabla (ultimos_hasta_fecha)
 precios_propio_ult = []
 precios_comp_ult = []
 for d in ultimos_hasta_fecha.values():
@@ -536,16 +559,16 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha) - CORREGIDO LEYENDA MODO OSCURO
+# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha) - CON SUBHEADER DE PERÍODO
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
+# Subheader con período
+st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
 
-# Obtener todas las fechas únicas del rango (desde fecha_inicio hasta fecha_fin, con datos)
 fechas_disponibles = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not fechas_disponibles:
     st.info("No hay datos para el gráfico evolutivo.")
 else:
-    # Diccionario para guardar el último precio de cada competidor (por nombre_original) hasta cada fecha
     ultimos_por_fecha = {}
     for fecha in fechas_disponibles:
         if fecha > fechas_disponibles[0]:
@@ -553,13 +576,11 @@ else:
             ultimos_por_fecha[fecha] = ultimos_por_fecha[fechas_disponibles[idx_prev]].copy()
         else:
             ultimos_por_fecha[fecha] = {}
-        # Actualizar con los precios que ocurren exactamente en esta fecha
         for p in competidores:
             if p.fecha_extraccion.date() == fecha:
                 key = p.nombre_original
                 precio = p.precio_usd if usar_usd else p.precio_bs
                 ultimos_por_fecha[fecha][key] = precio
-        # También actualizar producto propio (para tener actualizado, aunque se use después)
         for p in precios_propio:
             if p.fecha_extraccion.date() == fecha:
                 key = f"__propio__{p.nombre_original}"
@@ -568,7 +589,6 @@ else:
     
     datos_evol = []
     for fecha in fechas_disponibles:
-        # Competencia: calcular estadística de los últimos precios de ese día
         precios_comp = [v for k, v in ultimos_por_fecha[fecha].items() if not k.startswith('__propio__')]
         if precios_comp:
             if st.session_state.estadistica == "Mediana":
@@ -576,11 +596,9 @@ else:
             else:
                 stat_comp = np.mean(precios_comp)
             datos_evol.append({"Fecha": fecha, "Tipo": "Competencia", "Precio": stat_comp})
-        
-        # Producto propio: buscar su precio más reciente hasta esa fecha
         precios_prop_hasta_fecha = [v for k, v in ultimos_por_fecha[fecha].items() if k.startswith('__propio__')]
         if precios_prop_hasta_fecha:
-            ultimo_precio_prop = precios_prop_hasta_fecha[-1]  # el último insertado es el más reciente por cómo actualizamos
+            ultimo_precio_prop = precios_prop_hasta_fecha[-1]
             datos_evol.append({"Fecha": fecha, "Tipo": producto_actual.marca, "Precio": ultimo_precio_prop})
     
     df_evol = pd.DataFrame(datos_evol).sort_values("Fecha").drop_duplicates(subset=["Fecha", "Tipo"])
@@ -592,7 +610,6 @@ else:
                            color_discrete_map=colores_map,
                            title=f"Evolución - {titulo_est} diaria (último precio por competidor)")
         fig_evol.update_traces(textposition="top center", texttemplate='%{y:.2f}', marker=dict(size=8))
-        # Forzar colores de texto y fondo de la leyenda en modo oscuro
         if st.session_state.tema == "dark":
             fig_evol.update_layout(
                 plot_bgcolor="#2D2D2D",
@@ -614,17 +631,17 @@ else:
                 hovermode="x unified",
                 font=dict(color="black", size=12)
             )
-            fig_evol.update_xaxes(tickfont_color="black")
-            fig_evol.update_yaxes(tickfont_color="black")
-        fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
+        # Ajustar eje X para mostrar todas las fechas sin saltos excesivos
+        fig_evol.update_xaxes(tickformat="%Y-%m-%d", tickangle=45, dtick="D1")
         st.plotly_chart(fig_evol, use_container_width=True)
     else:
         st.info("No hay datos suficientes para el gráfico evolutivo.")
 
 # ============================================================================
-# BOXPLOT (sin cambios, pero adaptado para modo oscuro)
+# BOXPLOT POR DÍA - CON SUBHEADER DE PERÍODO
 # ============================================================================
 st.subheader("📊 Distribución de precios de la competencia por día (Boxplot)")
+st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
 if competidores:
     box_data = []
     for p in competidores:
@@ -657,13 +674,13 @@ if competidores:
             height=450,
             font=dict(color="black")
         )
-    fig_box.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
+    fig_box.update_xaxes(tickformat="%Y-%m-%d", tickangle=45, dtick="D1")
     st.plotly_chart(fig_box, use_container_width=True)
 else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNÓSTICO
+# EDITOR DE REGLAS Y DIAGNÓSTICO (sin cambios)
 # ============================================================================
 with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
@@ -699,4 +716,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Los gráficos evolutivos y KPIs se basan en la estadística seleccionada. La tabla muestra precios hasta la fecha más reciente común (último punto del gráfico). Los colores y el diseño están optimizados para mejor visualización. En modo oscuro todos los textos son legibles.")
+st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado.")
