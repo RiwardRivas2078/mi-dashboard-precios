@@ -5,7 +5,7 @@ import numpy as np
 from sqlalchemy import create_engine, Column, Integer, String, Numeric, Boolean, TIMESTAMP, ForeignKey, func, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import re
 from unicodedata import normalize
 from collections import defaultdict
@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS (idéntico al anterior pero incluyendo correcciones de color)
+# CSS (corrige modo oscuro, etc.)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -310,8 +310,10 @@ with col_f1:
     min_fecha = fechas[0] if fechas[0] else date.today()
     max_fecha = fechas[1] if fechas[1] else date.today()
     fecha_inicio = st.date_input("Desde", min_fecha, min_value=min_fecha, max_value=max_fecha)
+    fecha_inicio_date = fecha_inicio
 with col_f2:
     fecha_fin = st.date_input("Hasta", max_fecha, min_value=min_fecha, max_value=max_fecha)
+    fecha_fin_date = fecha_fin
 with col_f3:
     st.write("")
 
@@ -335,16 +337,21 @@ selected_super_ids = [super_options[n] for n in selected_super_nombres]
 st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
 
-# Diccionario para almacenar productos por supermercado (para el expander)
-productos_por_super = {}
+# Fechas para variaciones
+hoy = fecha_fin_date
+ayer = hoy - timedelta(days=1)
+hace_7_dias = hoy - timedelta(days=7)
+
+# Diccionario para almacenar información por supermercado
+info_super = {}
 
 if selected_super_nombres:
     cols_metric = st.columns(len(selected_super_nombres))
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
-        # Obtener la lista de productos propios distintos que tienen precio en este supermercado (basado en nombre_original)
-        # Usamos un JOIN con productos_referencia para asegurar que solo cuente productos de marcas_propias
-        productos_sup = session.query(PrecioHistorico.nombre_original).join(
+
+        # Obtener productos propios (distintos) en el período seleccionado
+        productos_actual = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
             PrecioHistorico.supermercado_id == sup_id,
@@ -352,29 +359,78 @@ if selected_super_nombres:
             ProductoReferencia.marca.in_(marcas_propias),
             ProductoReferencia.activo == True
         ).distinct().all()
-        productos_sup_lista = [p[0] for p in productos_sup]
-        productos_por_super[sup_nombre] = productos_sup_lista
-        count = len(productos_sup_lista)
+        lista_actual = [p[0] for p in productos_actual]
+        count_actual = len(lista_actual)
+
+        # Productos del día anterior (para variación diaria)
+        productos_ayer = session.query(PrecioHistorico.nombre_original).join(
+            ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
+        ).filter(
+            PrecioHistorico.supermercado_id == sup_id,
+            PrecioHistorico.fecha_extraccion == ayer,
+            ProductoReferencia.marca.in_(marcas_propias),
+            ProductoReferencia.activo == True
+        ).distinct().all()
+        count_ayer = len(productos_ayer)
+
+        # Productos hace 7 días (misma lógica, usando fecha exacta)
+        productos_7d = session.query(PrecioHistorico.nombre_original).join(
+            ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
+        ).filter(
+            PrecioHistorico.supermercado_id == sup_id,
+            PrecioHistorico.fecha_extraccion == hace_7_dias,
+            ProductoReferencia.marca.in_(marcas_propias),
+            ProductoReferencia.activo == True
+        ).distinct().all()
+        count_7d = len(productos_7d)
+
+        # Calcular variaciones
+        var_diaria = ((count_actual - count_ayer) / count_ayer * 100) if count_ayer > 0 else (100 if count_actual > 0 else 0)
+        var_semanal = ((count_actual - count_7d) / count_7d * 100) if count_7d > 0 else (100 if count_actual > 0 else 0)
+
+        info_super[sup_nombre] = {
+            "count": count_actual,
+            "productos": lista_actual,
+            "var_diaria": var_diaria,
+            "var_semanal": var_semanal
+        }
+
+        # Mostrar métrica con variaciones
         with cols_metric[idx]:
             st.markdown(f"""
             <div class="super-metric">
                 <strong>{sup_nombre}</strong><br>
-                <span style="font-size: 1.8rem; color:#CC0000;">{count}</span><br>
+                <span style="font-size: 1.8rem; color:#CC0000;">{count_actual}</span><br>
                 <span style="font-size: 0.7rem;">productos aliados</span>
+                <div style="font-size: 0.7rem; margin-top: 5px;">
+                    📈 vs ayer: <span style="color:{'#00A859' if var_diaria >= 0 else '#CC0000'}">{var_diaria:+.1f}%</span><br>
+                    📊 vs hace 7d: <span style="color:{'#00A859' if var_semanal >= 0 else '#CC0000'}">{var_semanal:+.1f}%</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-# Expander que muestra la lista de productos por supermercado
-with st.expander("📋 Ver lista de productos por supermercado (coincide con los contadores)"):
-    for sup, prods in productos_por_super.items():
-        st.markdown(f"**{sup}** ({len(prods)} productos)")
-        if prods:
-            # Mostrar en formato de tabla
-            df_prods = pd.DataFrame({"Producto (nombre_original)": prods})
-            st.dataframe(df_prods, use_container_width=True, hide_index=True)
+# Expander que muestra los productos reales (con su marca asignada) para depuración
+with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD)"):
+    for sup, data in info_super.items():
+        st.markdown(f"**{sup}** - {data['count']} productos")
+        if data['productos']:
+            # Para cada producto, obtener su marca desde productos_referencia (puede ser lento, pero son pocos)
+            prod_con_marca = []
+            for prod in data['productos']:
+                marca_asignada = session.query(ProductoReferencia.marca).join(
+                    PrecioHistorico, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
+                ).filter(
+                    PrecioHistorico.nombre_original == prod,
+                    PrecioHistorico.supermercado_id == super_options[sup],
+                    PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin)
+                ).first()
+                marca_nombre = marca_asignada[0] if marca_asignada else "SIN MARCA"
+                prod_con_marca.append({"Producto (nombre_original)": prod, "Marca asignada": marca_nombre})
+            df_detalle = pd.DataFrame(prod_con_marca)
+            st.dataframe(df_detalle, use_container_width=True, hide_index=True)
         else:
-            st.caption("No hay productos registrados en este supermercado.")
+            st.caption("No hay productos")
 
 # ============================================================================
 # SELECTOR DE PRODUCTO PROPIO
@@ -428,7 +484,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA
+# TABLA COMPARATIVA (corregida, sin error KeyError)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -452,7 +508,6 @@ else:
     super_ids_unicos = sorted(set(k[0] for k in ultimos_hasta_fecha.keys()))
     super_nombres = [session.get(Supermercado, sid).nombre for sid in super_ids_unicos]
     
-    # Crear DataFrame con celdas "precio (dd/mm)"
     df_valores = pd.DataFrame(index=[formatear_nombre_producto(prod) for prod in productos_unicos], columns=super_nombres)
     for prod in productos_unicos:
         prod_formateado = formatear_nombre_producto(prod)
@@ -466,7 +521,6 @@ else:
                 celda = "Sin datos"
             df_valores.loc[prod_formateado, sup_nombre] = celda
     
-    # Identificar producto propio
     nombre_propio_tabla = None
     for prod in productos_unicos:
         if producto_actual.nombre_producto.lower() in prod.lower() or producto_actual.marca.lower() in prod.lower():
@@ -475,12 +529,9 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Función para resaltar extremos (sin usar df_valores global)
     def colorear_extremos(fila):
-        # fila es una pandas Series (los valores de la fila)
         estilos = []
         precios = []
-        # Extraer precios numéricos de cada columna
         for col in fila.index:
             celda = fila[col]
             if celda != "Sin datos":
@@ -491,7 +542,6 @@ else:
                     precios.append((col, None))
             else:
                 precios.append((col, None))
-        # Filtrar los que tienen precio
         validos = [(col, p) for (col, p) in precios if p is not None]
         if not validos:
             return [''] * len(fila)
@@ -508,13 +558,11 @@ else:
                 estilos.append('')
         return estilos
     
-    # Resaltar fila del producto propio
     def resaltar_fila(row):
         if row.name == nombre_propio_tabla:
             return ['background-color: #2E7D32; color: white; font-weight: bold;'] * len(row)
         return [''] * len(row)
     
-    # Aplicar estilos
     styled = df_valores.style.apply(resaltar_fila, axis=1)
     styled = styled.apply(colorear_extremos, axis=1)
     styled = styled.set_properties(**{'text-align': 'center', 'font-size': '13px'})
@@ -714,7 +762,7 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# NUEVO GRÁFICO: EVOLUCIÓN POR SUPERMERCADO (PRODUCTO PROPIO)
+# GRÁFICO POR SUPERMERCADO (EXPANDER)
 # ============================================================================
 with st.expander("📊 Evolución de precios del producto propio por supermercado"):
     if precios_propio:
@@ -754,7 +802,7 @@ with st.expander("📊 Evolución de precios del producto propio por supermercad
         st.warning("No hay precios del producto propio en el período seleccionado.")
 
 # ============================================================================
-# EDITOR DE REGLAS Y DIAGNÓSTICO (sin cambios)
+# EDITOR DE REGLAS Y DIAGNÓSTICO
 # ============================================================================
 with st.expander("✏️ Editar reglas de inclusión/exclusión para este producto"):
     st.markdown("""
@@ -790,4 +838,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado. Nuevo gráfico por supermercado.")
+st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado. Variación diaria y semanal en productos por supermercado.")
