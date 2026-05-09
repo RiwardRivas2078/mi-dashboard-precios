@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS MEJORADO (corrige toggle, checkboxes, selectbox en modo oscuro)
+# CSS MEJORADO (corrige toggle, checkboxes, selectbox, inputs fecha en modo oscuro)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -163,8 +163,16 @@ else:
         .stCheckbox label span {
             color: white !important;
         }
-        /* Toggle USD/Bs */
-        .st-b7, .st-b8, .st-b9, .st-ba, .st-cb, .st-cc, .st-cd {
+        /* Toggle USD/Bs - forzar texto blanco */
+        .st-b7, .st-b8, .st-b9, .st-ba, .st-cb, .st-cc, .st-cd, .stToggle label, .stToggle span {
+            color: white !important;
+        }
+        /* Inputs de fecha - texto blanco sobre fondo oscuro */
+        .stDateInput input, .stDateInput label {
+            color: white !important;
+            background-color: #2D2D2D !important;
+        }
+        .stDateInput div {
             color: white !important;
         }
         /* Selector producto propio */
@@ -330,17 +338,25 @@ selected_super_ids = [super_options[n] for n in selected_super_nombres]
 
 st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
+
+# Diccionario para almacenar productos por supermercado (para el expander)
+productos_por_super = {}
+
 if selected_super_nombres:
     cols_metric = st.columns(len(selected_super_nombres))
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
-        count = session.query(func.count(func.distinct(PrecioHistorico.nombre_original))).filter(
+        # Obtener la lista de productos propios distintos que tienen precio en este supermercado
+        productos_sup = session.query(func.distinct(PrecioHistorico.nombre_original)).filter(
             PrecioHistorico.supermercado_id == sup_id,
             PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin),
             PrecioHistorico.producto_referencia_id.in_(
                 session.query(ProductoReferencia.id).filter(ProductoReferencia.marca.in_(marcas_propias))
             )
-        ).scalar()
+        ).all()
+        productos_sup_lista = [p[0] for p in productos_sup]
+        productos_por_super[sup_nombre] = productos_sup_lista
+        count = len(productos_sup_lista)
         with cols_metric[idx]:
             st.markdown(f"""
             <div class="super-metric">
@@ -351,20 +367,15 @@ if selected_super_nombres:
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-# ============================================================================
-# EXPANDER: LISTA DE PRODUCTOS PROPIOS INCLUIDOS
-# ============================================================================
-with st.expander("📋 Ver lista de productos propios actualmente en la base de datos"):
-    productos_propios_lista = session.query(ProductoReferencia).filter(
-        ProductoReferencia.marca.in_(marcas_propias),
-        ProductoReferencia.activo == True
-    ).all()
-    if productos_propios_lista:
-        df_propios = pd.DataFrame([(p.marca, p.nombre_producto, p.presentacion) for p in productos_propios_lista],
-                                  columns=["Marca", "Producto", "Presentación"])
-        st.dataframe(df_propios, use_container_width=True, hide_index=True)
-    else:
-        st.info("No hay productos propios definidos en la base de datos.")
+# Expander que muestra la lista de productos por supermercado (coincide con los contadores)
+with st.expander("📋 Productos por supermercado (los que aparecen en los contadores)"):
+    for sup, prods in productos_por_super.items():
+        st.markdown(f"**{sup}** ({len(prods)} productos)")
+        if prods:
+            df_prods = pd.DataFrame({"Producto": prods})
+            st.dataframe(df_prods, use_container_width=True, hide_index=True)
+        else:
+            st.caption("No hay productos registrados en este supermercado.")
 
 # ============================================================================
 # SELECTOR DE PRODUCTO PROPIO
@@ -390,7 +401,7 @@ if not precios_propio:
     st.warning(f"⚠️ El producto '{producto_label}' no tiene precios en los supermercados seleccionados. Se mostrará solo la competencia.")
 
 # ============================================================================
-# COMPETIDORES (usando reglas_match o categoría)
+# COMPETIDORES
 # ============================================================================
 todos_precios = session.query(PrecioHistorico).filter(
     PrecioHistorico.supermercado_id.in_(selected_super_ids),
@@ -418,7 +429,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA CON FECHA COMÚN Y COLORES POR PRECIO MÁX/MÍN
+# TABLA COMPARATIVA
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -465,36 +476,34 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Función para colorear precios máximos y mínimos por fila (excluyendo la fila propia)
-    def colorear_extremos(row_idx):
-        # row_idx es el índice de la fila (string)
-        row = df_valores.loc[row_idx]
-        precios_numericos = []
-        for col in df_valores.columns:
-            val = row[col]
-            if val != "Sin datos":
-                try:
-                    precio = float(val.split()[0])
-                    precios_numericos.append((col, precio))
-                except:
-                    pass
-        if not precios_numericos:
-            return [''] * len(df_valores.columns)
-        precios_solo = [p[1] for p in precios_numericos]
-        min_precio = min(precios_solo)
-        max_precio = max(precios_solo)
+    # Función para resaltar extremos (recibe la fila como Series)
+    def colorear_extremos(fila):
+        # fila es una pandas Series con los valores de la fila
         estilos = []
-        for col in df_valores.columns:
-            precio_col = None
-            for (c, p) in precios_numericos:
-                if c == col:
-                    precio_col = p
-                    break
-            if precio_col is None:
+        precios_valores = []
+        # Recoger precios numéricos de cada columna
+        for col in fila.index:
+            celda = fila[col]
+            if celda != "Sin datos":
+                try:
+                    precio = float(celda.split()[0])
+                    precios_valores.append((col, precio))
+                except:
+                    precios_valores.append((col, None))
+            else:
+                precios_valores.append((col, None))
+        # Filtrar solo los que tienen precio
+        precios_validos = [(col, p) for (col, p) in precios_valores if p is not None]
+        if not precios_validos:
+            return [''] * len(fila)
+        minimo = min(p[1] for p in precios_validos)
+        maximo = max(p[1] for p in precios_validos)
+        for col, p in precios_valores:
+            if p is None:
                 estilos.append('')
-            elif precio_col == min_precio:
+            elif p == minimo:
                 estilos.append('color: #00A859; font-weight: bold;')
-            elif precio_col == max_precio:
+            elif p == maximo:
                 estilos.append('color: #CC0000; font-weight: bold;')
             else:
                 estilos.append('')
@@ -521,7 +530,7 @@ else:
     st.markdown(f"<p class='centered-title'>📅 Precios correspondientes a la fecha más reciente con datos: {fecha_comun.strftime('%d/%m/%Y')} (cada celda muestra su última actualización hasta esa fecha)</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS y cobertura (con los mismos datos de la tabla)
+# KPIS y cobertura
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
@@ -587,7 +596,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha)
+# GRÁFICO EVOLUTIVO
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -706,7 +715,7 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# NUEVO GRÁFICO: EVOLUCIÓN POR SUPERMERCADO (EXPANDER)
+# NUEVO GRÁFICO: EVOLUCIÓN POR SUPERMERCADO (PRODUCTO PROPIO)
 # ============================================================================
 with st.expander("📊 Evolución de precios del producto propio por supermercado"):
     if precios_propio:
