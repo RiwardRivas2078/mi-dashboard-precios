@@ -584,7 +584,6 @@ st.subheader("📈 Indicadores Clave")
 
 # Obtener el último precio del producto propio (el más reciente en el período)
 if precios_propio:
-    # Ordenar por fecha descendente y tomar el primero
     ultimo_precio_propio = max(precios_propio, key=lambda x: x.fecha_extraccion)
     precio_propio_ultimo = float(ultimo_precio_propio.precio_usd if usar_usd else ultimo_precio_propio.precio_bs)
     fecha_propio_ultimo = ultimo_precio_propio.fecha_extraccion
@@ -668,7 +667,7 @@ st.caption(f"🔍 Análisis basado en los últimos precios disponibles: producto
 # ============================================================================
 # GRÁFICO EVOLUTIVO (último precio por competidor hasta cada fecha)
 # ============================================================================
-# Definir titulo_est (estadística) para usar en título y leyendas
+# Definir titulo_est para usar en título y leyenda
 titulo_est = "Mediana" if st.session_state.estadistica == "Mediana" else "Promedio"
 
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
