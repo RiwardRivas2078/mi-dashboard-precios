@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS
+# CSS (mejorado con contraste)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -136,9 +136,9 @@ if st.session_state.tema == "light":
         .centered-title { text-align: center; font-size: 0.85rem; color: #6C757D; margin-top: 8px; }
         div[data-baseweb="select"] div { color: #CC0000 !important; }
         .tooltip { cursor: help; border-bottom: 1px dotted #aaa; }
-        /* Asegurar que los colores de precios extremos tengan prioridad */
-        .dataframe td span[style*="color: #00A859"] { font-weight: bold; }
-        .dataframe td span[style*="color: #CC0000"] { font-weight: bold; }
+        /* Colores para precios extremos con mayor contraste */
+        .dataframe td .lowest-price { color: #006400 !important; font-weight: bold; }
+        .dataframe td .highest-price { color: #B22222 !important; font-weight: bold; }
     </style>
     """
 else:
@@ -217,6 +217,8 @@ else:
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #CCCCCC; margin-top: 8px; }
         .tooltip { cursor: help; border-bottom: 1px dotted #aaa; }
+        .dataframe td .lowest-price { color: #32CD32 !important; font-weight: bold; }
+        .dataframe td .highest-price { color: #FF4500 !important; font-weight: bold; }
     </style>
     """
 
@@ -320,6 +322,11 @@ with col_f2:
 with col_f3:
     st.write("")
 
+# Definir fechas de referencia para variaciones (después de tener fecha_fin)
+hoy = fecha_fin
+ayer = hoy - timedelta(days=1)
+hace_7_dias = hoy - timedelta(days=7)
+
 super_con_datos = session.query(Supermercado).join(PrecioHistorico).filter(
     PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin)
 ).distinct().all()
@@ -340,7 +347,7 @@ selected_super_ids = [super_options[n] for n in selected_super_nombres]
 st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
 
-# Calcular TOTAL de productos propios (universo) desde productos_referencia (activos y con marca propia)
+# Total de productos propios (universo)
 total_productos_propios_universo = session.query(ProductoReferencia).filter(
     ProductoReferencia.marca.in_(marcas_propias),
     ProductoReferencia.activo == True
@@ -353,7 +360,7 @@ if selected_super_nombres:
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
 
-        # Productos propios distintos con precios en este supermercado en el período
+        # Productos actuales en el período
         productos_actual = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -365,9 +372,7 @@ if selected_super_nombres:
         lista_actual = [p[0] for p in productos_actual]
         count_actual = len(lista_actual)
 
-        # Variaciones con fechas específicas (tomando solo si hay datos reales)
-        # Para evitar el 100% falso, solo calculamos si existen precios en la fecha anterior.
-        # Día anterior
+        # Productos del día anterior (si existe)
         productos_ayer = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -377,7 +382,8 @@ if selected_super_nombres:
             ProductoReferencia.activo == True
         ).distinct().all()
         count_ayer = len(productos_ayer)
-        # Hace 7 días
+
+        # Productos hace 7 días
         productos_7d = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -388,34 +394,31 @@ if selected_super_nombres:
         ).distinct().all()
         count_7d = len(productos_7d)
 
-        # Variaciones: si no hay datos el día anterior, mostrar "N/D" o 0% (pero sin flecha engañosa)
-        if count_ayer == 0:
-            var_diaria = None
-            flecha_diaria = "?"
-            color_diaria = "#6C757D"
-            texto_var_diaria = "N/D"
-        else:
+        # Calcular variaciones
+        if count_ayer > 0:
             var_diaria = ((count_actual - count_ayer) / count_ayer * 100)
             flecha_diaria = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
             color_diaria = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
             texto_var_diaria = f"{abs(var_diaria):.1f}%"
-
-        if count_7d == 0:
-            var_semanal = None
-            flecha_semanal = "?"
-            color_semanal = "#6C757D"
-            texto_var_semanal = "N/D"
         else:
+            var_diaria = None
+            flecha_diaria = "?"
+            color_diaria = "#6C757D"
+            texto_var_diaria = "N/D"
+
+        if count_7d > 0:
             var_semanal = ((count_actual - count_7d) / count_7d * 100)
             flecha_semanal = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
             color_semanal = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
             texto_var_semanal = f"{abs(var_semanal):.1f}%"
-
-        # Porcentaje de participación (sobre universo de productos propios)
-        if total_productos_propios_universo > 0:
-            porcentaje = (count_actual / total_productos_propios_universo) * 100
         else:
-            porcentaje = 0
+            var_semanal = None
+            flecha_semanal = "?"
+            color_semanal = "#6C757D"
+            texto_var_semanal = "N/D"
+
+        # Porcentaje de participación sobre el total de productos propios
+        porcentaje = (count_actual / total_productos_propios_universo * 100) if total_productos_propios_universo > 0 else 0
 
         info_super[sup_nombre] = {
             "count": count_actual,
@@ -592,9 +595,9 @@ else:
             if p is None:
                 estilos.append('')
             elif p == min_precio:
-                estilos.append('color: #00A859; font-weight: bold;')  # verde para mínimo (más barato)
+                estilos.append('color: #006400; font-weight: bold;')  # verde oscuro para mínimo
             elif p == max_precio:
-                estilos.append('color: #CC0000; font-weight: bold;')  # rojo para máximo (más caro)
+                estilos.append('color: #B22222; font-weight: bold;')  # rojo fuego para máximo
             else:
                 estilos.append('')
         return estilos
@@ -834,11 +837,9 @@ with st.expander("🏆 Comparativa de precios: Competidores más baratos vs prod
             key = p.nombre_original
             if key not in ultimos_competidores or p.fecha_extraccion > ultimos_competidores[key]['fecha']:
                 ultimos_competidores[key] = {'precio': float(p.precio_usd if usar_usd else p.precio_bs), 'fecha': p.fecha_extraccion}
-        # Ordenar por precio ascendente y tomar top 3
         top_3 = sorted(ultimos_competidores.items(), key=lambda x: x[1]['precio'])[:3]
         
         if top_3:
-            # Crear DataFrame para el gráfico de barras
             data_bar = []
             data_bar.append({"Competidor": producto_actual.marca, "Precio": precio_propio, "Tipo": "Propio"})
             for nombre, info in top_3:
@@ -857,7 +858,6 @@ with st.expander("🏆 Comparativa de precios: Competidores más baratos vs prod
                 fig_bar.update_layout(plot_bgcolor="white", paper_bgcolor="white", font=dict(color="black"))
             st.plotly_chart(fig_bar, use_container_width=True)
             
-            # Mostrar tabla detallada con fechas
             st.markdown("**📋 Detalle de los competidores más económicos:**")
             detalle = []
             for nombre, info in top_3:
@@ -920,7 +920,6 @@ with st.expander("✏️ Editar reglas de inclusión/exclusión para este produc
 
 with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
     if reglas and (reglas[0] or reglas[1]):
-        # Usar la variable definida anteriormente (palabras_incluir, palabras_excluir) – cuidado con tildes
         st.write(f"**Reglas activas:** Incluir: {', '.join(palabras_incluir)} | Excluir: {', '.join(palabras_excluir)}")
         st.write("**Competidores ACEPTADOS (mostrados en tabla):**")
         for p in competidores[:20]:
