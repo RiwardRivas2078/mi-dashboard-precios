@@ -61,7 +61,7 @@ class PrecioHistorico(Base):
     matched_automatically = Column(Boolean, default=False)
 
 # ============================================================================
-# CONFIGURACIÓN DE TEMA Y ESTADÍSTICA (igual)
+# CONFIGURACIÓN DE TEMA Y ESTADÍSTICA
 # ============================================================================
 st.set_page_config(page_title="Market Intelligence - Purolomo", page_icon="🐔", layout="wide")
 
@@ -77,7 +77,7 @@ def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
 # ============================================================================
-# CSS (incluye mejoras para tarjetas)
+# CSS (mejorado con flechas y tarjetas)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -97,9 +97,7 @@ if st.session_state.tema == "light":
             border-top: 4px solid #CC0000;
             transition: transform 0.2s;
         }
-        .super-metric:hover {
-            transform: translateY(-2px);
-        }
+        .super-metric:hover { transform: translateY(-2px); }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label { background-color: white; padding: 6px 14px; border-radius: 30px; border: 1px solid #E5E5E5; }
@@ -127,12 +125,8 @@ if st.session_state.tema == "light":
             background-color: #FFFFFF;
             color: #1E1E1E;
         }
-        .dataframe tr:nth-child(even) td {
-            background-color: #F8F9FA;
-        }
-        .dataframe tr:hover td {
-            background-color: #FFF0F0;
-        }
+        .dataframe tr:nth-child(even) td { background-color: #F8F9FA; }
+        .dataframe tr:hover td { background-color: #FFF0F0; }
         .dataframe td:first-child {
             font-weight: 600;
             background-color: #F2F2F2;
@@ -140,9 +134,7 @@ if st.session_state.tema == "light":
             padding-left: 16px;
         }
         .centered-title { text-align: center; font-size: 0.85rem; color: #6C757D; margin-top: 8px; }
-        div[data-baseweb="select"] div {
-            color: #CC0000 !important;
-        }
+        div[data-baseweb="select"] div { color: #CC0000 !important; }
     </style>
     """
 else:
@@ -169,9 +161,7 @@ else:
             border-top: 4px solid #CC0000;
             transition: transform 0.2s;
         }
-        .super-metric:hover {
-            transform: translateY(-2px);
-        }
+        .super-metric:hover { transform: translateY(-2px); }
         .stButton button { background-color: #CC0000; color: white; border-radius: 30px; font-weight: bold; border: none; }
         .stButton button:hover { background-color: #00A859; }
         .stCheckbox label {
@@ -181,22 +171,14 @@ else:
             border: 1px solid #555;
             color: white !important;
         }
-        .stCheckbox label span {
-            color: white !important;
-        }
-        .st-b7, .st-b8, .st-b9, .st-ba, .st-cb, .st-cc, .st-cd, .stToggle label, .stToggle span {
-            color: white !important;
-        }
+        .stCheckbox label span { color: white !important; }
+        .st-b7, .st-b8, .st-b9, .st-ba, .st-cb, .st-cc, .st-cd, .stToggle label, .stToggle span { color: white !important; }
         .stDateInput input, .stDateInput label {
             color: white !important;
             background-color: #2D2D2D !important;
         }
-        .stDateInput div {
-            color: white !important;
-        }
-        div[data-baseweb="select"] div {
-            color: #CC0000 !important;
-        }
+        .stDateInput div { color: white !important; }
+        div[data-baseweb="select"] div { color: #CC0000 !important; }
         .dataframe {
             font-size: 14px;
             border-collapse: separate;
@@ -220,12 +202,8 @@ else:
             background-color: #2D2D2D;
             color: #F0F0F0;
         }
-        .dataframe tr:nth-child(even) td {
-            background-color: #3A3A3A;
-        }
-        .dataframe tr:hover td {
-            background-color: #4A4A4A;
-        }
+        .dataframe tr:nth-child(even) td { background-color: #3A3A3A; }
+        .dataframe tr:hover td { background-color: #4A4A4A; }
         .dataframe td:first-child {
             font-weight: 600;
             background-color: #3D3D3D;
@@ -244,7 +222,7 @@ st.title("📊 Market Intelligence - Purolomo & Marcas Aliadas")
 st.caption("Comparativa de precios - Tabla con precios hasta la última fecha común al gráfico")
 
 # ============================================================================
-# BARRA SUPERIOR (sin cambios)
+# BARRA SUPERIOR
 # ============================================================================
 col_t1, col_t2, col_t3 = st.columns([1, 1, 3])
 with col_t1:
@@ -320,7 +298,7 @@ def formatear_nombre_producto(nombre):
     return " ".join(palabras).capitalize()
 
 # ============================================================================
-# CONEXIÓN A BD Y FILTROS (igual)
+# CONEXIÓN A BD Y FILTROS
 # ============================================================================
 session = SessionLocal()
 marcas_propias = ['La Lucha', 'Punta de Monte', 'Alibal', 'Purolomo', 'San Blas', 'Purovo', 'Milpa']
@@ -332,10 +310,8 @@ with col_f1:
     min_fecha = fechas[0] if fechas[0] else date.today()
     max_fecha = fechas[1] if fechas[1] else date.today()
     fecha_inicio = st.date_input("Desde", min_fecha, min_value=min_fecha, max_value=max_fecha)
-    fecha_inicio_date = fecha_inicio
 with col_f2:
     fecha_fin = st.date_input("Hasta", max_fecha, min_value=min_fecha, max_value=max_fecha)
-    fecha_fin_date = fecha_fin
 with col_f3:
     st.write("")
 
@@ -360,11 +336,10 @@ st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
 
 # Fechas para variaciones
-hoy = fecha_fin_date
+hoy = fecha_fin
 ayer = hoy - timedelta(days=1)
 hace_7_dias = hoy - timedelta(days=7)
 
-# Diccionario para almacenar información por supermercado
 info_super = {}
 
 if selected_super_nombres:
@@ -372,7 +347,7 @@ if selected_super_nombres:
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
 
-        # Obtener productos propios (distintos) en el período seleccionado
+        # Productos actuales (período)
         productos_actual = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -384,7 +359,7 @@ if selected_super_nombres:
         lista_actual = [p[0] for p in productos_actual]
         count_actual = len(lista_actual)
 
-        # Productos del día anterior (para variación diaria)
+        # Productos día anterior
         productos_ayer = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -395,7 +370,7 @@ if selected_super_nombres:
         ).distinct().all()
         count_ayer = len(productos_ayer)
 
-        # Productos hace 7 días (misma lógica, usando fecha exacta)
+        # Productos hace 7 días
         productos_7d = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -406,7 +381,6 @@ if selected_super_nombres:
         ).distinct().all()
         count_7d = len(productos_7d)
 
-        # Calcular variaciones
         var_diaria = ((count_actual - count_ayer) / count_ayer * 100) if count_ayer > 0 else (100 if count_actual > 0 else 0)
         var_semanal = ((count_actual - count_7d) / count_7d * 100) if count_7d > 0 else (100 if count_actual > 0 else 0)
 
@@ -417,28 +391,26 @@ if selected_super_nombres:
             "var_semanal": var_semanal
         }
 
-        # Mostrar métrica MEJORADA con flechas
+        flecha_diaria = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
+        flecha_semanal = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
+        color_diaria = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
+        color_semanal = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
+
         with cols_metric[idx]:
-            # Flechas y colores
-            flecha_diaria = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
-            flecha_semanal = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
-            color_diaria = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
-            color_semanal = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
-            
             st.markdown(f"""
             <div class="super-metric">
                 <strong>{sup_nombre}</strong><br>
                 <span style="font-size: 2rem; color:#CC0000; font-weight:bold;">{count_actual}</span><br>
                 <span style="font-size: 0.75rem;">productos aliados</span>
-                <div style="font-size: 0.75rem; margin-top: 8px; text-align:center;">
-                    <span>📈 vs ayer: <span style="color:{color_diaria}; font-weight:bold;">{flecha_diaria} {abs(var_diaria):.1f}%</span></span><br>
-                    <span>📅 vs hace 7d: <span style="color:{color_semanal}; font-weight:bold;">{flecha_semanal} {abs(var_semanal):.1f}%</span></span>
+                <div style="font-size: 0.75rem; margin-top: 8px;">
+                    <span>📈 vs ayer: <span style="color:{color_diaria};">{flecha_diaria} {abs(var_diaria):.1f}%</span></span><br>
+                    <span>📅 vs hace 7d: <span style="color:{color_semanal};">{flecha_semanal} {abs(var_semanal):.1f}%</span></span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-# Expander de diagnóstico mejorado
+# Expander de diagnóstico
 with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD)"):
     for sup, data in info_super.items():
         st.markdown(f"**{sup}** - {data['count']} productos")
@@ -459,7 +431,6 @@ with st.expander("🔍 Ver productos por supermercado (y su marca asignada en BD
         else:
             st.caption("No hay productos")
 
-# Expander adicional: lista de productos propios registrados (para detectar faltantes)
 with st.expander("📋 Todos los productos propios registrados en la base de datos"):
     productos_propios_reg = session.query(ProductoReferencia).filter(
         ProductoReferencia.marca.in_(marcas_propias),
@@ -469,12 +440,11 @@ with st.expander("📋 Todos los productos propios registrados en la base de dat
         df_propios = pd.DataFrame([(p.id, p.marca, p.nombre_producto, p.presentacion) for p in productos_propios_reg],
                                   columns=["ID", "Marca", "Producto", "Presentación"])
         st.dataframe(df_propios, use_container_width=True, hide_index=True)
-        st.caption("Si espera ver algún producto (ej. 'Mezcla para Torta la Lucha de vainilla 500 gr') y no aparece, significa que no está registrado en `productos_referencia` con los criterios adecuados (marca correcta, activo=true, es_propio=true).")
     else:
         st.info("No hay productos propios registrados.")
 
 # ============================================================================
-# SELECTOR DE PRODUCTO PROPIO (igual)
+# SELECTOR DE PRODUCTO PROPIO
 # ============================================================================
 productos_propios = session.query(ProductoReferencia).filter(
     ProductoReferencia.marca.in_(marcas_propias),
@@ -486,7 +456,7 @@ producto_id = opciones[producto_label]
 producto_actual = session.get(ProductoReferencia, producto_id)
 
 # ============================================================================
-# PRECIOS DEL PRODUCTO PROPIO (igual)
+# PRECIOS DEL PRODUCTO PROPIO
 # ============================================================================
 precios_propio = session.query(PrecioHistorico).filter(
     PrecioHistorico.producto_referencia_id == producto_id,
@@ -497,7 +467,7 @@ if not precios_propio:
     st.warning(f"⚠️ El producto '{producto_label}' no tiene precios en los supermercados seleccionados. Se mostrará solo la competencia.")
 
 # ============================================================================
-# COMPETIDORES (igual)
+# COMPETIDORES
 # ============================================================================
 todos_precios = session.query(PrecioHistorico).filter(
     PrecioHistorico.supermercado_id.in_(selected_super_ids),
@@ -525,7 +495,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA (igual)
+# TABLA COMPARATIVA (última fecha común)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -618,28 +588,27 @@ else:
     st.markdown(f"<p class='centered-title'>📅 Precios correspondientes a la fecha más reciente con datos: {fecha_comun.strftime('%d/%m/%Y')} (cada celda muestra su última actualización hasta esa fecha)</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS y cobertura (igual)
+# KPIS y cobertura CORREGIDOS (usando TODOS los precios del período)
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
-precios_propio_ult = []
-precios_comp_ult = []
-for d in ultimos_hasta_fecha.values():
-    if d['nombre_original'] == nombre_propio_tabla:
-        precios_propio_ult.append(d['precio'])
-    else:
-        precios_comp_ult.append(d['precio'])
+# ---- CORRECCIÓN AQUÍ ----
+# Usamos TODOS los precios del producto propio y de la competencia en el período, no solo la última fecha.
+todos_precios_propio = [p.precio_usd if usar_usd else p.precio_bs for p in precios_propio]
+todos_precios_comp = [p.precio_usd if usar_usd else p.precio_bs for p in competidores]
 
 if st.session_state.estadistica == "Mediana":
-    valor_prop = np.median(precios_propio_ult) if precios_propio_ult else 0
-    valor_comp = np.median(precios_comp_ult) if precios_comp_ult else 0
+    valor_prop = np.median(todos_precios_propio) if todos_precios_propio else 0
+    valor_comp = np.median(todos_precios_comp) if todos_precios_comp else 0
     titulo_est = "Mediana"
 else:
-    valor_prop = np.mean(precios_propio_ult) if precios_propio_ult else 0
-    valor_comp = np.mean(precios_comp_ult) if precios_comp_ult else 0
+    valor_prop = np.mean(todos_precios_propio) if todos_precios_propio else 0
+    valor_comp = np.mean(todos_precios_comp) if todos_precios_comp else 0
     titulo_est = "Promedio"
 
-cobertura, datos_existentes, combinaciones_totales = calcular_cobertura(precios_comp_ult, productos_unicos, super_ids_unicos)
+# Cobertura (opcional, se mantiene)
+cobertura, datos_existentes, combinaciones_totales = calcular_cobertura(todos_precios_comp, productos_unicos, super_ids_unicos)
+# -----------------------------------------------
 
 if valor_prop > valor_comp:
     clase_metric = "metric-red"
@@ -684,7 +653,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en {datos_existentes} datos de precio (de un total de {combinaciones_totales} posibles). Cobertura: {cobertura:.1f}%. Estadística: {titulo_est}.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO (igual)
+# GRÁFICO EVOLUTIVO (sin cambios)
 # ============================================================================
 st.subheader(f"📈 Evolución de precios - {titulo_est} de la competencia vs producto propio")
 st.caption(f"📅 Período: {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
@@ -803,7 +772,7 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# GRÁFICO POR SUPERMERCADO (EXPANDER) (igual)
+# GRÁFICO POR SUPERMERCADO (EXPANDER)
 # ============================================================================
 with st.expander("📊 Evolución de precios del producto propio por supermercado"):
     if precios_propio:
@@ -879,4 +848,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Modo oscuro mejorado. Variación diaria y semanal en productos por supermercado con flechas.")
+st.caption("🚀 KPIs calculados con todos los precios del período. Gráficos con período visible. Precios más caro en rojo y más barato en verde en la tabla. Variación diaria y semanal con flechas.")
