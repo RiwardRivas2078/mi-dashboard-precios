@@ -79,7 +79,7 @@ def toggle_estadistica():
 
 
 # ============================================================================
-# CSS (mejorado, sin estilos de colores para tabla porque usamos pandas directo)
+# CSS (estilos generales, sin interferir en colores de tabla)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -343,18 +343,16 @@ st.markdown("---")
 st.markdown("### 📦 Productos Purolomo & Aliados por supermercado")
 
 # ============================================================================
-# TOTAL DE PRODUCTOS PROPIOS (MANUAL)
+# TOTAL DE PRODUCTOS PROPIOS (MANUAL – AJUSTA SEGÚN TU CASO)
 # ============================================================================
-TOTAL_PRODUCTOS_PROPIOS = 21   # ← CAMBIE AQUÍ SI EL NÚMERO ES DIFERENTE
-
-info_super = {}
+TOTAL_PRODUCTOS_PROPIOS = 21   # ← Cambia este número si es necesario
 
 if selected_super_nombres:
     cols_metric = st.columns(len(selected_super_nombres))
     for idx, sup_nombre in enumerate(selected_super_nombres):
         sup_id = super_options[sup_nombre]
 
-        # Productos propios que aparecen en este supermercado
+        # Productos propios que aparecen en este supermercado en el período
         productos_actual = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -366,7 +364,7 @@ if selected_super_nombres:
         count_actual = len(productos_actual)
         porcentaje = (count_actual / TOTAL_PRODUCTOS_PROPIOS) * 100
 
-        # Verificar si hay datos del día anterior
+        # Productos del día anterior y hace 7 días (para variaciones)
         productos_ayer = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -376,7 +374,7 @@ if selected_super_nombres:
             ProductoReferencia.activo == True
         ).distinct().all()
         count_ayer = len(productos_ayer)
-        # Verificar si hay datos de hace 7 días
+
         productos_7d = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -387,23 +385,7 @@ if selected_super_nombres:
         ).distinct().all()
         count_7d = len(productos_7d)
 
-        # Calcular variaciones solo si hay datos comparables (count_ayer > 0)
-        if count_ayer > 0:
-            var_diaria = ((count_actual - count_ayer) / count_ayer * 100)
-            flecha_diaria = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
-            color_diaria = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
-            texto_diaria = f"{abs(var_diaria):.1f}%"
-        else:
-            var_diaria = None
-
-        if count_7d > 0:
-            var_semanal = ((count_actual - count_7d) / count_7d * 100)
-            flecha_semanal = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
-            color_semanal = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
-            texto_semanal = f"{abs(var_semanal):.1f}%"
-        else:
-            var_semanal = None
-
+        # Construcción de la tarjeta HTML (solo mostrar variaciones si hay datos)
         html = f"""
         <div class="super-metric">
             <strong>{sup_nombre}</strong><br>
@@ -411,18 +393,29 @@ if selected_super_nombres:
             <span style="font-size: 1rem;"> ({porcentaje:.1f}%)</span><br>
             <span style="font-size: 0.75rem;">productos aliados</span>
         """
-        if var_diaria is not None:
+
+        # Solo añadir línea de variación diaria si existe el día anterior
+        if count_ayer > 0:
+            var_diaria = ((count_actual - count_ayer) / count_ayer * 100)
+            flecha = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
+            color = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
             html += f"""
             <div style="font-size: 0.75rem; margin-top: 5px;">
-                📈 vs ayer: <span style="color:{color_diaria};">{flecha_diaria} {texto_diaria}</span>
+                📈 vs ayer: <span style="color:{color};">{flecha} {abs(var_diaria):.1f}%</span>
             </div>
             """
-        if var_semanal is not None:
+
+        # Solo añadir línea de variación semanal si existen datos de hace 7 días
+        if count_7d > 0:
+            var_semanal = ((count_actual - count_7d) / count_7d * 100)
+            flecha = "↑" if var_semanal > 0 else ("↓" if var_diaria < 0 else "→")
+            color = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
             html += f"""
             <div style="font-size: 0.75rem;">
-                📅 vs hace 7d: <span style="color:{color_semanal};">{flecha_semanal} {texto_semanal}</span>
+                📅 vs hace 7d: <span style="color:{color};">{flecha} {abs(var_semanal):.1f}%</span>
             </div>
             """
+
         html += "</div>"
         with cols_metric[idx]:
             st.markdown(html, unsafe_allow_html=True)
@@ -503,7 +496,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA (con colores directos para extremos)
+# TABLA COMPARATIVA (con colores: verde para el mínimo, rojo para el máximo)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -540,6 +533,7 @@ else:
                 celda = "Sin datos"
             df_valores.loc[prod_formateado, sup_nombre] = celda
     
+    # Identificar la fila del producto propio
     nombre_propio_tabla = None
     for prod in productos_unicos:
         if producto_actual.nombre_producto.lower() in prod.lower() or producto_actual.marca.lower() in prod.lower():
@@ -548,7 +542,7 @@ else:
     if not nombre_propio_tabla and precios_propio:
         nombre_propio_tabla = formatear_nombre_producto(precios_propio[0].nombre_original)
     
-    # Función para colorear extremos directamente con estilos CSS en línea
+    # Función que colorea el precio mínimo (verde) y máximo (rojo) de cada fila
     def colorear_extremos(fila):
         estilos = []
         precios = []
@@ -597,7 +591,7 @@ else:
     st.markdown(f"<p class='centered-title'>📅 Precios correspondientes a la fecha más reciente con datos: {fecha_comun.strftime('%d/%m/%Y')} (cada celda muestra su última actualización hasta esa fecha)</p>", unsafe_allow_html=True)
 
 # ============================================================================
-# KPIS
+# KPIS (último precio propio vs competidores en tabla)
 # ============================================================================
 st.subheader("📈 Indicadores Clave")
 
@@ -679,7 +673,7 @@ with col3:
 st.caption(f"🔍 Análisis basado en los últimos precios disponibles: producto propio vs competidores mostrados en la tabla. Estadística: {st.session_state.estadistica} sobre los precios de competidores.")
 
 # ============================================================================
-# GRÁFICO EVOLUTIVO
+# GRÁFICO EVOLUTIVO (competencia vs producto propio)
 # ============================================================================
 titulo_est = "Mediana" if st.session_state.estadistica == "Mediana" else "Promedio"
 
@@ -800,7 +794,7 @@ else:
     st.info("No hay competidores para mostrar boxplot.")
 
 # ============================================================================
-# NUEVO GRÁFICO: TOP 3 COMPETIDORES MÁS BARATOS vs PRODUCTO PROPIO
+# GRÁFICO DE TOP 3 COMPETIDORES MÁS BARATOS
 # ============================================================================
 with st.expander("🏆 Comparativa de precios: Competidores más baratos vs producto propio"):
     if precios_propio and competidores:
@@ -842,7 +836,7 @@ with st.expander("🏆 Comparativa de precios: Competidores más baratos vs prod
         st.warning("No hay datos del producto propio o no hay competidores en el período seleccionado.")
 
 # ============================================================================
-# GRÁFICO POR SUPERMERCADO (MEJORADO)
+# GRÁFICO POR SUPERMERCADO (mejorado con selector y diseño)
 # ============================================================================
 with st.expander("📊 Evolución de precios del producto propio por supermercado"):
     if precios_propio:
@@ -865,7 +859,6 @@ with st.expander("📊 Evolución de precios del producto propio por supermercad
                                       labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
                                       title=f"Evolución de {producto_actual.marca} - {producto_actual.nombre_producto} por supermercado")
                     fig_sup.update_traces(marker=dict(size=8))
-                    # Ajustes de diseño
                     fig_sup.update_layout(
                         xaxis_title="Fecha",
                         yaxis_title=f"Precio ({moneda})",
@@ -928,4 +921,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Los KPIs muestran el último precio del producto propio y el promedio/mediana de los competidores que aparecen en la tabla. El gráfico evolutivo usa el último precio por competidor hasta cada fecha. Los porcentajes de productos por supermercado se calculan sobre un total manual de 21 productos propios. Las variaciones solo se muestran cuando hay datos comparables.")
+st.caption("🚀 Los KPIs muestran el último precio del producto propio y el promedio/mediana de los competidores que aparecen en la tabla. El gráfico evolutivo usa el último precio por competidor hasta cada fecha. Los porcentajes de productos por supermercado se calculan sobre un total manual (21 productos). Las variaciones solo se muestran si existen datos comparables. La tabla colorea el precio más bajo en verde y el más alto en rojo por cada fila.")
