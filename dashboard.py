@@ -315,11 +315,8 @@ with col_f2:
 with col_f3:
     st.write("")
 
-# Fechas para variaciones
-hoy = fecha_fin
-ayer = hoy - timedelta(days=1)
-hace_7_dias = hoy - timedelta(days=7)
-
+# Fechas para variaciones (no se usan, las eliminamos)
+# super_con_datos
 super_con_datos = session.query(Supermercado).join(PrecioHistorico).filter(
     PrecioHistorico.fecha_extraccion.between(fecha_inicio, fecha_fin)
 ).distinct().all()
@@ -362,59 +359,15 @@ if selected_super_nombres:
         count_actual = len(productos_actual)
         porcentaje = (count_actual / TOTAL_PRODUCTOS_PROPIOS) * 100
 
-        # Productos del día anterior y hace 7 días (solo para calcular variaciones si existen)
-        productos_ayer = session.query(PrecioHistorico.nombre_original).join(
-            ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
-        ).filter(
-            PrecioHistorico.supermercado_id == sup_id,
-            PrecioHistorico.fecha_extraccion == ayer,
-            ProductoReferencia.marca.in_(marcas_propias),
-            ProductoReferencia.activo == True
-        ).distinct().all()
-        count_ayer = len(productos_ayer)
-
-        productos_7d = session.query(PrecioHistorico.nombre_original).join(
-            ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
-        ).filter(
-            PrecioHistorico.supermercado_id == sup_id,
-            PrecioHistorico.fecha_extraccion == hace_7_dias,
-            ProductoReferencia.marca.in_(marcas_propias),
-            ProductoReferencia.activo == True
-        ).distinct().all()
-        count_7d = len(productos_7d)
-
-        # Construcción de la tarjeta HTML
+        # Tarjeta sin variaciones (solo número y porcentaje)
         html = f"""
         <div class="super-metric">
             <strong>{sup_nombre}</strong><br>
             <span style="font-size: 1.8rem; color:#CC0000; font-weight:bold;">{count_actual}</span>
             <span style="font-size: 1rem;"> ({porcentaje:.1f}%)</span><br>
             <span style="font-size: 0.75rem;">productos aliados</span>
+        </div>
         """
-
-        # Solo añadir línea de variación diaria si existe el día anterior y count_ayer > 0
-        if count_ayer > 0:
-            var_diaria = ((count_actual - count_ayer) / count_ayer * 100)
-            flecha = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
-            color = "#00A859" if var_diaria > 0 else ("#CC0000" if var_diaria < 0 else "#6C757D")
-            html += f"""
-            <div style="font-size: 0.75rem; margin-top: 5px;">
-                📈 vs ayer: <span style="color:{color};">{flecha} {abs(var_diaria):.1f}%</span>
-            </div>
-            """
-
-        # Solo añadir línea de variación semanal si existen datos de hace 7 días y count_7d > 0
-        if count_7d > 0:
-            var_semanal = ((count_actual - count_7d) / count_7d * 100)
-            flecha = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
-            color = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
-            html += f"""
-            <div style="font-size: 0.75rem;">
-                📅 vs hace 7d: <span style="color:{color};">{flecha} {abs(var_semanal):.1f}%</span>
-            </div>
-            """
-
-        html += "</div>"
         with cols_metric[idx]:
             st.markdown(html, unsafe_allow_html=True)
     st.markdown("---")
@@ -870,4 +823,4 @@ with st.expander("🔍 Diagnóstico (reglas y competidores rechazados)"):
         st.write("No hay reglas definidas, se usa categoría automática.")
 
 session.close()
-st.caption("🚀 Los KPIs muestran el último precio del producto propio y el promedio/mediana de los competidores que aparecen en la tabla. El gráfico evolutivo usa el último precio por competidor hasta cada fecha. Los porcentajes de productos por supermercado se calculan sobre un total manual (21 productos). Las variaciones solo se muestran si existen datos comparables. La tabla colorea el precio más bajo en verde y el más alto en rojo por cada fila.")
+st.caption("🚀 Los KPIs muestran el último precio del producto propio y el promedio/mediana de los competidores que aparecen en la tabla. El gráfico evolutivo usa el último precio por competidor hasta cada fecha. Los porcentajes de productos por supermercado se calculan sobre un total manual (21 productos). La tabla colorea el precio más bajo en verde y el más alto en rojo por cada fila.")
