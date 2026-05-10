@@ -60,7 +60,6 @@ class PrecioHistorico(Base):
     match_score = Column(Integer)
     matched_automatically = Column(Boolean, default=False)
 
-
 # ============================================================================
 # CONFIGURACIÓN DE TEMA Y ESTADÍSTICA
 # ============================================================================
@@ -77,9 +76,8 @@ def toggle_tema():
 def toggle_estadistica():
     st.session_state.estadistica = "Promedio" if st.session_state.estadistica == "Mediana" else "Mediana"
 
-
 # ============================================================================
-# CSS (estilos generales, sin interferir en colores de tabla)
+# CSS (estilos generales)
 # ============================================================================
 if st.session_state.tema == "light":
     tema_css = """
@@ -364,7 +362,7 @@ if selected_super_nombres:
         count_actual = len(productos_actual)
         porcentaje = (count_actual / TOTAL_PRODUCTOS_PROPIOS) * 100
 
-        # Productos del día anterior y hace 7 días (para variaciones)
+        # Productos del día anterior y hace 7 días (solo para calcular variaciones si existen)
         productos_ayer = session.query(PrecioHistorico.nombre_original).join(
             ProductoReferencia, PrecioHistorico.producto_referencia_id == ProductoReferencia.id
         ).filter(
@@ -385,7 +383,7 @@ if selected_super_nombres:
         ).distinct().all()
         count_7d = len(productos_7d)
 
-        # Construcción de la tarjeta HTML (solo mostrar variaciones si hay datos)
+        # Construcción de la tarjeta HTML
         html = f"""
         <div class="super-metric">
             <strong>{sup_nombre}</strong><br>
@@ -394,7 +392,7 @@ if selected_super_nombres:
             <span style="font-size: 0.75rem;">productos aliados</span>
         """
 
-        # Solo añadir línea de variación diaria si existe el día anterior
+        # Solo añadir línea de variación diaria si existe el día anterior y count_ayer > 0
         if count_ayer > 0:
             var_diaria = ((count_actual - count_ayer) / count_ayer * 100)
             flecha = "↑" if var_diaria > 0 else ("↓" if var_diaria < 0 else "→")
@@ -405,10 +403,10 @@ if selected_super_nombres:
             </div>
             """
 
-        # Solo añadir línea de variación semanal si existen datos de hace 7 días
+        # Solo añadir línea de variación semanal si existen datos de hace 7 días y count_7d > 0
         if count_7d > 0:
             var_semanal = ((count_actual - count_7d) / count_7d * 100)
-            flecha = "↑" if var_semanal > 0 else ("↓" if var_diaria < 0 else "→")
+            flecha = "↑" if var_semanal > 0 else ("↓" if var_semanal < 0 else "→")
             color = "#00A859" if var_semanal > 0 else ("#CC0000" if var_semanal < 0 else "#6C757D")
             html += f"""
             <div style="font-size: 0.75rem;">
@@ -496,7 +494,7 @@ else:
     st.info(f"📏 Sin reglas, usando categoría: '{categoria_propia}'")
 
 # ============================================================================
-# TABLA COMPARATIVA (con colores: verde para el mínimo, rojo para el máximo)
+# TABLA COMPARATIVA (con colores: verde para mínimo, rojo para máximo)
 # ============================================================================
 todas_fechas = sorted(set(p.fecha_extraccion.date() for p in (precios_propio + competidores)))
 if not todas_fechas:
@@ -834,55 +832,6 @@ with st.expander("🏆 Comparativa de precios: Competidores más baratos vs prod
             st.info("No hay competidores con precios para comparar.")
     else:
         st.warning("No hay datos del producto propio o no hay competidores en el período seleccionado.")
-
-# ============================================================================
-# GRÁFICO POR SUPERMERCADO (mejorado con selector y diseño)
-# ============================================================================
-with st.expander("📊 Evolución de precios del producto propio por supermercado"):
-    if precios_propio:
-        # Convertir a DataFrame
-        df_sup = []
-        for p in precios_propio:
-            sup_nombre = session.get(Supermercado, p.supermercado_id).nombre
-            precio = p.precio_usd if usar_usd else p.precio_bs
-            df_sup.append({"Fecha": p.fecha_extraccion.date(), "Supermercado": sup_nombre, "Precio": float(precio)})
-        df_sup = pd.DataFrame(df_sup)
-        if not df_sup.empty:
-            # Obtener lista de supermercados únicos
-            supermercados_unicos = df_sup['Supermercado'].unique()
-            # Selección múltiple de supermercados a mostrar
-            seleccion_sup = st.multiselect("Selecciona supermercados a visualizar:", options=supermercados_unicos, default=supermercados_unicos, key="sup_selector")
-            if seleccion_sup:
-                df_filtrado = df_sup[df_sup['Supermercado'].isin(seleccion_sup)]
-                if not df_filtrado.empty:
-                    fig_sup = px.line(df_filtrado, x="Fecha", y="Precio", color="Supermercado", markers=True,
-                                      labels={"Precio": f"Precio ({moneda})", "Fecha": "Fecha"},
-                                      title=f"Evolución de {producto_actual.marca} - {producto_actual.nombre_producto} por supermercado")
-                    fig_sup.update_traces(marker=dict(size=8))
-                    fig_sup.update_layout(
-                        xaxis_title="Fecha",
-                        yaxis_title=f"Precio ({moneda})",
-                        legend_title="Supermercado",
-                        height=450,
-                        hovermode="x unified"
-                    )
-                    if st.session_state.tema == "dark":
-                        fig_sup.update_layout(plot_bgcolor="#2D2D2D", paper_bgcolor="#2D2D2D", font=dict(color="white"))
-                        fig_sup.update_xaxes(gridcolor="#555555", title_font_color="white", tickfont_color="white")
-                        fig_sup.update_yaxes(gridcolor="#555555", title_font_color="white", tickfont_color="white")
-                        fig_sup.update_layout(legend=dict(font=dict(color="white"), bgcolor="#2D2D2D", bordercolor="white", borderwidth=1))
-                    else:
-                        fig_sup.update_layout(plot_bgcolor="white", paper_bgcolor="white", font=dict(color="black"))
-                    fig_sup.update_xaxes(tickformat="%Y-%m-%d", tickangle=45)
-                    st.plotly_chart(fig_sup, use_container_width=True)
-                else:
-                    st.info("No hay datos para los supermercados seleccionados.")
-            else:
-                st.warning("Selecciona al menos un supermercado.")
-        else:
-            st.info("No hay datos suficientes para el gráfico por supermercado.")
-    else:
-        st.warning("No hay precios del producto propio en el período seleccionado.")
 
 # ============================================================================
 # EDITOR DE REGLAS Y DIAGNÓSTICO
